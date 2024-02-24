@@ -5,7 +5,7 @@ from transformers import CLIPImageProcessor
 from datasets import Dataset
 import torch
 
-def make_dataloader(images: list, text_prompt:str,tokenizer:object,size:int,train_batch_size:int)->DataLoader:
+def make_dataloader(images: list, text_prompt_list:str,tokenizer:object,size:int,train_batch_size:int)->DataLoader:
     '''
     makes a torch dataloader that we can use for training
     '''
@@ -22,7 +22,7 @@ def make_dataloader(images: list, text_prompt:str,tokenizer:object,size:int,trai
         IMAGES:[] #images used for latents (lora trainign script calls it pixel values)
     }
     clip_image_processor = CLIPImageProcessor()
-    for image in images:
+    for image,text_prompot in zip(images,text_prompt_list):
         text_input_ids=tokenizer(
             text_prompt,max_length=tokenizer.model_max_length, padding="max_length", truncation=True, return_tensors="pt"
         ).input_ids
