@@ -11,7 +11,7 @@ import torch
 import torch.nn.functional as F
 
 def loop(images: list,
-               text_prompt:str,
+               text_prompt_list:list,
                ip_adapter_image: Image,
                pipeline:StableDiffusionPipeline,
                timesteps_per_image:int,
@@ -35,7 +35,7 @@ def loop(images: list,
     
     images: PIL imgs to be used for training
     ip_adapter_image: 
-    text_prompt: text prompt describing character
+    text_prompt: text prompts describing character
     pipeline: should already have ip adapter loaded
     start_epoch: epoch we're starting at
     epochs: how many epochs to do this training
@@ -49,8 +49,8 @@ def loop(images: list,
     tokenizer=pipeline.tokenizer
     vae=pipeline.vae
     text_encoder=pipeline.text_encoder
-    dataloader=make_dataloader(images,text_prompt,tokenizer,size, train_batch_size)
-    unet=tokenizer.unet
+    dataloader=make_dataloader(images,text_prompt_list,tokenizer,size, train_batch_size)
+    unet=pipeline.unet
     lora_layers = filter(lambda p: p.requires_grad, unet.parameters()) #optimizer should already be listening to whatever layers we're optimzing
     unet, optimizer, dataloader, lr_scheduler = accelerator.prepare(
         unet, optimizer, dataloader, lr_scheduler
@@ -63,7 +63,7 @@ def loop(images: list,
     weight_dtype=pipeline.dtype
     noise_scheduler = DDPMScheduler(num_train_timesteps=timesteps_per_image,clip_sample=False)
     for e in range(start_epoch, epochs):
-        unet.train()
+        unet.train() #only if unet has trainable layers
         train_loss = 0.0
         global_step=0
         for step,batch in enumerate(dataloader):
@@ -127,6 +127,7 @@ def loop(images: list,
             tracker=accelerator.get_tracker("wandb")
             path="tmp.png"
             for i in range(num_validation_images):
+                text_prompt=text_prompt_list[i]
                 img=pipeline(text_prompt, num_inference_steps=timesteps_per_image, generator=generator).images[0]
                 img.save(path)
                 tracker.log({f"img_{i}": wandb.Image(path)},step=e)
