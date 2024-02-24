@@ -14,20 +14,20 @@ def loop(images: list,
                text_prompt_list:list,
                ip_adapter_image: Image,
                pipeline:StableDiffusionPipeline,
-               timesteps_per_image:int,
                start_epoch:int,
-               epochs:int,
                optimizer:object,
-               lr_scheduler: object,
                accelerator:object,
-               size:int,train_batch_size:int,
-               output_dir:str,
                use_ip_adapter:bool,
                with_prior_preservation:bool,
-               num_validation_images:int,
-               seed:int=0,
-               noise_offset:float=None,
-               max_grad_norm:float=1.0
+               training_method:str,
+               epochs:int,
+               seed:int,
+                timesteps_per_image:int,
+                size:int,
+                train_batch_size:int,
+                num_validation_images:int,
+                noise_offset:float,
+                max_grad_norm:float,
                )->StableDiffusionPipeline:
     '''
     given images generated from text prompt, and the src_image, trains the unet lora pipeline for epochs
@@ -52,8 +52,8 @@ def loop(images: list,
     dataloader=make_dataloader(images,text_prompt_list,tokenizer,size, train_batch_size)
     unet=pipeline.unet
     lora_layers = filter(lambda p: p.requires_grad, unet.parameters()) #optimizer should already be listening to whatever layers we're optimzing
-    unet, optimizer, dataloader, lr_scheduler = accelerator.prepare(
-        unet, optimizer, dataloader, lr_scheduler
+    unet,text_encoder,vae, optimizer, dataloader= accelerator.prepare(
+        unet,text_encoder,vae, optimizer, dataloader
     )
     added_cond_kwargs={}
     if use_ip_adapter:
@@ -103,14 +103,13 @@ def loop(images: list,
                     params_to_clip = lora_layers
                     accelerator.clip_grad_norm_(params_to_clip, max_grad_norm)
                 optimizer.step()
-                lr_scheduler.step()
                 optimizer.zero_grad()
             if accelerator.sync_gradients:
                 global_step += 1
-                accelerator.log({"train_loss": train_loss}, step=global_step)
+                accelerator.log({f"{training_method}_train_loss": train_loss}, step=global_step)
                 train_loss = 0.0
         if accelerator.is_main_process:
-            save_path = os.path.join(output_dir, f"checkpoint-{e}")
+            '''save_path = os.path.join(output_dir, f"checkpoint-{e}")
             accelerator.save_state(save_path)
 
             unet_lora_state_dict = get_peft_model_state_dict(unet)
@@ -119,7 +118,7 @@ def loop(images: list,
                 save_directory=save_path,
                 unet_lora_layers=unet_lora_state_dict,
                 safe_serialization=True,
-            )
+            )'''
 
             generator = torch.Generator(device=accelerator.device)
             generator.set_manual_seed(seed)
@@ -130,6 +129,6 @@ def loop(images: list,
                 text_prompt=text_prompt_list[i]
                 img=pipeline(text_prompt, num_inference_steps=timesteps_per_image, generator=generator).images[0]
                 img.save(path)
-                tracker.log({f"img_{i}": wandb.Image(path)},step=e)
+                tracker.log({f"{training_method}_img_{i}": wandb.Image(path)},step=e)
 
     return pipeline
