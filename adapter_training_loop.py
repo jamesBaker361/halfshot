@@ -46,6 +46,9 @@ def loop(images: list,
     with_prior_preservation: whether to use prior preservation (for dreambooth)
     noise_offset: https://www.crosslabs.org//blog/diffusion-with-offset-noise
     '''
+    tracker=accelerator.get_tracker("wandb")
+    for i in range(num_validation_images):
+        wandb.define_metric(f"{training_method}_img_{i}",step_metric="custom_step")
     tokenizer=pipeline.tokenizer
     vae=pipeline.vae
     text_encoder=pipeline.text_encoder
@@ -62,10 +65,10 @@ def loop(images: list,
         added_cond_kwargs = {"image_embeds": image_embeds}
     weight_dtype=pipeline.dtype
     noise_scheduler = DDPMScheduler(num_train_timesteps=timesteps_per_image,clip_sample=False)
+    global_step=0
     for e in range(start_epoch, epochs):
         unet.train() #only if unet has trainable layers
         train_loss = 0.0
-        global_step=0
         for step,batch in enumerate(dataloader):
             with accelerator.accumulate(unet):
                 latents = vae.encode(batch[IMAGES].to(dtype=weight_dtype)).latent_dist.sample()
@@ -121,14 +124,13 @@ def loop(images: list,
             )'''
 
             generator = torch.Generator(device=accelerator.device)
-            generator.set_manual_seed(seed)
+            generator.manual_seed(seed)
 
-            tracker=accelerator.get_tracker("wandb")
             path="tmp.png"
             for i in range(num_validation_images):
                 text_prompt=text_prompt_list[i]
                 img=pipeline(text_prompt, num_inference_steps=timesteps_per_image, generator=generator).images[0]
                 img.save(path)
-                tracker.log({f"{training_method}_img_{i}": wandb.Image(path)},step=e)
+                tracker.log({f"{training_method}_img_{i}": wandb.Image(path), "custom_step":e})
 
     return pipeline
