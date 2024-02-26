@@ -19,6 +19,8 @@ def loop(images: list,
                accelerator:object,
                use_ip_adapter:bool,
                with_prior_preservation:bool,
+               prior_text_prompt_list:list,
+                prior_images:list,
                prior_loss_weight:float,
                training_method:str,
                epochs:int,
@@ -53,7 +55,7 @@ def loop(images: list,
     tokenizer=pipeline.tokenizer
     vae=pipeline.vae
     text_encoder=pipeline.text_encoder
-    dataloader=make_dataloader(images,text_prompt_list,tokenizer,size, train_batch_size)
+    dataloader=make_dataloader(images,text_prompt_list,prior_images,prior_text_prompt_list, tokenizer,size, train_batch_size)
     unet=pipeline.unet
     lora_layers = filter(lambda p: p.requires_grad, unet.parameters()) #optimizer should already be listening to whatever layers we're optimzing
     unet,text_encoder,vae, optimizer, dataloader= accelerator.prepare(
@@ -97,7 +99,21 @@ def loop(images: list,
                                 encoder_hidden_states,
                                 added_cond_kwargs=added_cond_kwargs).sample
                 
-                loss = F.mse_loss(noise_pred.float(), noise.float(), reduction="mean")
+                if with_prior_preservation:
+                    # Chunk the noise and model_pred into two parts and compute the loss on each part separately.
+                    noise_pred, noise_pred_prior = torch.chunk(noise_pred, 2, dim=0)
+                    noise, noise_prior = torch.chunk(noise, 2, dim=0)
+
+                    # Compute instance loss
+                    loss = F.mse_loss(noise_pred.float(), noise.float(), reduction="mean")
+
+                    # Compute prior loss
+                    prior_loss = F.mse_loss(noise_pred_prior.float(), noise_prior.float(), reduction="mean")
+
+                    # Add the prior loss to the instance loss.
+                    loss = loss + prior_loss_weight * prior_loss
+                else:
+                    loss = F.mse_loss(noise_pred.float(), noise.float(), reduction="mean")
 
                 avg_loss = accelerator.gather(loss.repeat(train_batch_size)).mean()
                 train_loss += avg_loss.item()

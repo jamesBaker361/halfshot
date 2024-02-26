@@ -7,7 +7,7 @@ import torch
 
 class CustomDataset(Dataset):
     def __init__(self,mapping):
-        self.mapping=mapping
+        self.mapping={k:v for k,v in mapping.items() if len(v)!=0}
 
     def __len__(self):
         for v in self.mapping.values():
@@ -19,7 +19,7 @@ class CustomDataset(Dataset):
             example[k]=v[index]
         return example
 
-def make_dataloader(images: list, text_prompt_list:list,tokenizer:object,size:int,train_batch_size:int)->DataLoader:
+def make_dataloader(images: list, text_prompt_list:list,prior_images:list, prior_text_prompt_list:list,tokenizer:object,size:int,train_batch_size:int)->DataLoader:
     '''
     makes a torch dataloader that we can use for training
     '''
@@ -33,7 +33,9 @@ def make_dataloader(images: list, text_prompt_list:list,tokenizer:object,size:in
     mapping={
         TEXT_INPUT_IDS:[], #tokenized texts
         CLIP_IMAGES:[], #images preprocessed by clip processor 
-        IMAGES:[] #images used for latents (lora trainign script calls it pixel values)
+        IMAGES:[], #images used for latents (lora trainign script calls it pixel values)
+        PRIOR_IMAGES:[],
+        PRIOR_TEXT_INPUT_IDS:[]
     }
     clip_image_processor = CLIPImageProcessor()
     for image,text_prompt in zip(images,text_prompt_list):
