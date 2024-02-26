@@ -46,19 +46,33 @@ def make_dataloader(images: list, text_prompt_list:list,prior_images:list, prior
             text_prompt_list,max_length=tokenizer.model_max_length, padding="max_length", truncation=True, return_tensors="pt"
         ).input_ids
     mapping[TEXT_INPUT_IDS]=text_input_ids
+    use_prior_preservation=False
+    if len(prior_images)>0 and len(prior_text_prompt_list)>0:
+        use_prior_preservation=True
+        for prior_image in prior_images:
+            mapping[PRIOR_IMAGES].append(img_transform(prior_image.convert("RGB")))
+        prior_text_input_ids=tokenizer(
+                prior_text_prompt_list,max_length=tokenizer.model_max_length, padding="max_length", truncation=True, return_tensors="pt"
+            ).input_ids
+        mapping[PRIOR_TEXT_INPUT_IDS]=prior_text_input_ids
 
-    def collate_fn(examples):
-        return {
-            TEXT_INPUT_IDS: torch.stack([example[TEXT_INPUT_IDS] for example in examples]),
-            CLIP_IMAGES: torch.stack([example[CLIP_IMAGES] for example in examples]),
-            IMAGES: torch.stack([example[IMAGES] for example in examples])
-        }
+    def collate_fn(examples,use_prior_preservation=False):
+        if use_prior_preservation:
+            return {
+                TEXT_INPUT_IDS: torch.stack([example[TEXT_INPUT_IDS] for example in examples]+[example[PRIOR_TEXT_INPUT_IDS] for example in examples]),
+                IMAGES: torch.stack([example[IMAGES] for example in examples]+[example[PRIOR_IMAGES] for example in examples])
+            }
+        else:
+            return {
+                TEXT_INPUT_IDS: torch.stack([example[TEXT_INPUT_IDS] for example in examples]),
+                IMAGES: torch.stack([example[IMAGES] for example in examples])
+            }
     train_dataset=CustomDataset(mapping)
 
     train_dataloader = DataLoader(
         train_dataset,
         shuffle=True,
-        collate_fn=collate_fn,
+        collate_fn=lambda examples: collate_fn(examples, use_prior_preservation),
         batch_size=train_batch_size,
     )
     return train_dataloader

@@ -17,6 +17,35 @@ def get_trained_pipeline(
 def evaluate_pipeline(image,text_prompt,pipeline)->dict:
     return {"pipeline":pipeline}
     
+imagenet_templates_small = [
+    "a photo of a {}",
+    "a rendering of a {}",
+    "a cropped photo of the {}",
+    "the photo of a {}",
+    "a photo of a clean {}",
+    "a photo of a dirty {}",
+    "a dark photo of the {}",
+    "a photo of my {}",
+    "a photo of the cool {}",
+    "a close-up photo of a {}",
+    "a bright photo of the {}",
+    "a cropped photo of a {}",
+    "a photo of the {}",
+    "a good photo of the {}",
+    "a photo of one {}",
+    "a close-up photo of the {}",
+    "a rendition of the {}",
+    "a photo of the clean {}",
+    "a rendition of a {}",
+    "a photo of a nice {}",
+    "a good photo of a {}",
+    "a photo of the nice {}",
+    "a photo of the small {}",
+    "a photo of the weird {}",
+    "a photo of the large {}",
+    "a photo of a cool {}",
+    "a photo of a small {}",
+]
 
 def train_and_evaluate(image: Image,
                        text_prompt:str, 
@@ -26,7 +55,7 @@ def train_and_evaluate(image: Image,
                        adam_beta2:float,
                        adam_weight_decay:float,
                        adam_epsilon:float,
-                       prior_text_prompt_list:list,
+                       prior_text_prompt:str,
                        prior_images:list,
                        prior_loss_weight:float,
                        training_method:str,
@@ -48,20 +77,43 @@ def train_and_evaluate(image: Image,
         model.requires_grad_(False)
     trainable_parameters=[]
     with_prior_preservation=False
+    prior_text_prompt_list=[]
     use_ip_adapter=False
     ip_adapter_image=None
     use_chosen_one=False
     if training_method=="dreambooth":
-        return
+        text_encoder_target_modules=["q_proj", "v_proj"]
+        text_encoder_config=LoraConfig(
+            r=8,
+            lora_alpha=32,
+            target_modules=text_encoder_target_modules,
+            lora_dropout=0.0
+        )
+        text_encoder=get_peft_model(text_encoder,text_encoder_config)
+        text_encoder.train()
+
+        unet_target_modules= ["to_q", "to_v", "query", "value"]
+        unet_config=LoraConfig(
+            r=8,
+            lora_alpha=32,
+            target_modules=unet_target_modules,
+            lora_dropout=0.0
+        )
+        unet=get_peft_model(unet,unet_config)
+        unet.train()
+        with_prior_preservation=True
+        prior_text_prompt_list=[prior_text_prompt]*len(prior_images)
+        images=[image]*len(prior_images)
+        text_prompt_list=[text_prompt]*len(prior_images)
     elif training_method=="ip_adapter":
         #if trainable ip-adapter well have to do some shit here
         return
     elif training_method=="unet_lora":
-        target_modules=["to_k", "to_q", "to_v", "to_out.0"]
+        unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"]
         config = LoraConfig(
             r=8,
             lora_alpha=32,
-            target_modules=target_modules,
+            target_modules=unet_target_modules,
             lora_dropout=0.0,
             bias="none")
         unet = get_peft_model(unet, config)
