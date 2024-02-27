@@ -18,7 +18,7 @@ def get_trained_pipeline(
 def evaluate_pipeline(image,text_prompt,pipeline)->dict:
     return {"pipeline":pipeline}
     
-imagenet_templates_small = [
+imagenet_template_list = [
     "a photo of a {}",
     "a rendering of a {}",
     "a cropped photo of the {}",
@@ -131,7 +131,7 @@ def train_and_evaluate(image: Image,
         tokenizer.add_tokens(placeholder_tokens)
         token_ids = tokenizer.encode(initializer_token, add_special_tokens=False)
         initializer_token_id = token_ids[0]
-        placeholder_token_ids = tokenizer.convert_tokens_to_ids()
+        placeholder_token_ids = tokenizer.convert_tokens_to_ids(placeholder_tokens)
 
         # Resize the token embeddings as we are adding new special tokens to the tokenizer
         text_encoder.resize_token_embeddings(len(tokenizer))
@@ -143,6 +143,9 @@ def train_and_evaluate(image: Image,
                 token_embeds[token_id] = token_embeds[initializer_token_id].clone()
 
         text_encoder.get_input_embeddings().requires_grad_(True)
+        images=[image]*5
+        text_prompt_list=[imagenet_template.format(text_prompt) for imagenet_template in imagenet_template_list]
+        random_text_prompt=True
     for model in [vae,unet,text_encoder]:
         trainable_parameters+=[p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(
