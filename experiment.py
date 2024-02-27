@@ -69,7 +69,8 @@ def train_and_evaluate(image: Image,
                         noise_offset:float,
                         max_grad_norm:float,
                        )->dict:
-    pipeline=StableDiffusionPipeline.from_pretrained("stabilityai/stable-diffusion-2-base")
+    pipeline=StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5")
+    pipeline("nothing",num_inference_steps=2) #if we dont do this the properties wont instantiate correctly???
     unet=pipeline.unet
     vae=pipeline.vae
     tokenizer=pipeline.tokenizer
@@ -108,8 +109,22 @@ def train_and_evaluate(image: Image,
         images=[image]*len(prior_images)
         text_prompt_list=[text_prompt]*len(prior_images)
     elif training_method=="ip_adapter":
-        #if trainable ip-adapter well have to do some shit here
-        return
+        #if trainable with ip-adapter well only be training the unet
+        #this particular case well not actually use b/c training images=ip image
+        use_ip_adapter=True
+        pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name="ip-adapter-plus-face_sd15.bin")
+        unet_target_modules= ["to_q", "to_v", "query", "value"]
+        unet_config=LoraConfig(
+            r=8,
+            lora_alpha=32,
+            target_modules=unet_target_modules,
+            lora_dropout=0.0
+        )
+        unet=get_peft_model(unet,unet_config)
+        unet.train()
+        images=[image]*5
+        ip_adapter_image=image
+        text_prompt_list=[text_prompt]*5
     elif training_method=="unet_lora":
         unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"]
         config = LoraConfig(

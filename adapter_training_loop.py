@@ -63,10 +63,6 @@ def loop(images: list,
         unet,text_encoder,vae, optimizer, dataloader
     )
     added_cond_kwargs={}
-    if use_ip_adapter:
-        image_embeds = pipeline.prepare_ip_adapter_image_embeds(
-                    ip_adapter_image, None, accelerator.device, train_batch_size)
-        added_cond_kwargs = {"image_embeds": image_embeds}
     weight_dtype=pipeline.dtype
     noise_scheduler = DDPMScheduler(num_train_timesteps=timesteps_per_image,clip_sample=False)
     global_step=0
@@ -75,6 +71,10 @@ def loop(images: list,
         train_loss = 0.0
         for step,batch in enumerate(dataloader):
             with accelerator.accumulate(unet):
+                if use_ip_adapter:
+                    image_embeds = pipeline.prepare_ip_adapter_image_embeds(
+                            ip_adapter_image, accelerator.device, train_batch_size)
+                    added_cond_kwargs = {"image_embeds": image_embeds}
                 latents = vae.encode(batch[IMAGES].to(dtype=weight_dtype)).latent_dist.sample()
                 latents = latents * vae.config.scaling_factor
 
@@ -147,7 +147,11 @@ def loop(images: list,
             path="tmp.png"
             for i in range(num_validation_images):
                 text_prompt=text_prompt_list[i]
-                img=pipeline(text_prompt, num_inference_steps=timesteps_per_image, generator=generator).images[0]
+                added_cond_kwargs={}
+                if use_ip_adapter:
+                    img=pipeline(text_prompt, num_inference_steps=timesteps_per_image, generator=generator,ip_adapter_image=ip_adapter_image).images[0]
+                else:
+                    img=pipeline(text_prompt, num_inference_steps=timesteps_per_image, generator=generator).images[0]
                 img.save(path)
                 tracker.log({f"{training_method}_img_{i}": wandb.Image(path), "custom_step":e})
 
