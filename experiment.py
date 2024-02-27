@@ -15,7 +15,7 @@ def get_trained_pipeline(
     loop_kwargs={}
     return None
 
-def evaluate_pipeline(image,text_prompt,pipeline)->dict:
+def evaluate_pipeline(image:Image,text_prompt:str,pipeline:StableDiffusionPipeline)->dict:
     return {"pipeline":pipeline}
     
 imagenet_template_list = [
