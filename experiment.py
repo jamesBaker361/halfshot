@@ -39,15 +39,21 @@ evaluation_prompt_list=[
     "a photo of {} at the beach" #this is just for testing
 ]
 
-def evaluate_pipeline(image:Image,text_prompt:str,pipeline:StableDiffusionPipeline,timesteps_per_image:int,use_ip_adapter:bool)->dict:
+def evaluate_pipeline(image:Image,
+                      text_prompt:str,
+                      pipeline:StableDiffusionPipeline,
+                      timesteps_per_image:int,
+                      use_ip_adapter:bool)->dict:
     evaluation_image_list=[]
     generator=torch.Generator(pipeline.device)
     generator.manual_seed(123)
     for evaluation_prompt in evaluation_prompt_list:
         prompt=evaluation_prompt.format(text_prompt)
         if use_ip_adapter:
-            image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,ip_adapter_image=image).images[0]
-            evaluation_image_list.append(image)
+            eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,ip_adapter_image=image).images[0]
+        else:
+            eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator).images[0]
+        evaluation_image_list.append(eval_image)
     return {"pipeline":pipeline,"images":evaluation_image_list}
     
 imagenet_template_list = [
