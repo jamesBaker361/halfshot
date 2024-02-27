@@ -15,8 +15,40 @@ def get_trained_pipeline(
     loop_kwargs={}
     return None
 
+
+evaluation_prompt_list=[
+    "a photo of {} at the beach",
+    "a photo of {} in the jungle",
+    "a photo of {} in the snow",
+    "a photo of {} in the street",
+    "a photo of {} with a city in the background",
+    "a photo of {} with a mountain in the background",
+    "a photo of {} with the Eiffel Tower in the background",
+    "a photo of {} near the Statue of Liberty",
+    "a photo of {} near the Sydney Opera House",
+    "a photo of {} floating on top of water",
+    "a photo of {} eating a burger",
+    "a photo of {} drinking a beer",
+    "a photo of {} wearing a blue hat",
+    "a photo of {} wearing sunglasses",
+    "a photo of {} playing with a ball",
+    "a photo of {} as a police officer"
+]
+
+evaluation_prompt_list=[
+    "a photo of {} at the beach" #this is just for testing
+]
+
 def evaluate_pipeline(image:Image,text_prompt:str,pipeline:StableDiffusionPipeline,timesteps_per_image:int,use_ip_adapter:bool)->dict:
-    return {"pipeline":pipeline}
+    evaluation_image_list=[]
+    generator=torch.Generator(pipeline.device)
+    generator.manual_seed(123)
+    for evaluation_prompt in evaluation_prompt_list:
+        prompt=evaluation_prompt.format(text_prompt)
+        if use_ip_adapter:
+            image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,ip_adapter_image=image).images[0]
+            evaluation_image_list.append(image)
+    return {"pipeline":pipeline,"images":evaluation_image_list}
     
 imagenet_template_list = [
     "a photo of a {}",
@@ -47,6 +79,8 @@ imagenet_template_list = [
     "a photo of a cool {}",
     "a photo of a small {}",
 ]
+
+
 
 def train_and_evaluate(image: Image,
                        text_prompt:str, 
