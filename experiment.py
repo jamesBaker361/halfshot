@@ -15,7 +15,7 @@ def get_trained_pipeline(
     loop_kwargs={}
     return None
 
-def evaluate_pipeline(image:Image,text_prompt:str,pipeline:StableDiffusionPipeline,timesteps_per_image:int)->dict:
+def evaluate_pipeline(image:Image,text_prompt:str,pipeline:StableDiffusionPipeline,timesteps_per_image:int,use_ip_adapter:bool)->dict:
     return {"pipeline":pipeline}
     
 imagenet_template_list = [
@@ -195,4 +195,4 @@ def train_and_evaluate(image: Image,
             noise_offset=noise_offset,
             max_grad_norm=max_grad_norm
         )
-        return evaluate_pipeline(image,text_prompt,pipeline,timesteps_per_image)
+        return evaluate_pipeline(image,text_prompt,pipeline,timesteps_per_image,use_ip_adapter)
