@@ -4,22 +4,25 @@ from string_globals import *
 from transformers import CLIPImageProcessor
 from torch.utils.data import Dataset
 import torch
+import random
 
 class CustomDataset(Dataset):
-    def __init__(self,mapping):
+    def __init__(self,mapping,random_text_prompt):
         self.mapping={k:v for k,v in mapping.items() if len(v)!=0}
+        self.random_text_prompt=random_text_prompt
 
     def __len__(self):
-        for v in self.mapping.values():
-            return len(v)
+        return len(self.mapping[IMAGES])
         
     def __getitem__(self,index):
         example={}
         for k,v in self.mapping.items():
             example[k]=v[index]
+        if self.random_text_prompt:
+            example[TEXT_INPUT_IDS]=random.choice(self.mapping[TEXT_INPUT_IDS])
         return example
 
-def make_dataloader(images: list, text_prompt_list:list,prior_images:list, prior_text_prompt_list:list,tokenizer:object,size:int,train_batch_size:int)->DataLoader:
+def make_dataloader(images: list, text_prompt_list:list,prior_images:list, prior_text_prompt_list:list,tokenizer:object,size:int,train_batch_size:int, random_text_prompt:bool)->DataLoader:
     '''
     makes a torch dataloader that we can use for training
     '''
@@ -38,7 +41,7 @@ def make_dataloader(images: list, text_prompt_list:list,prior_images:list, prior
         PRIOR_TEXT_INPUT_IDS:[]
     }
     clip_image_processor = CLIPImageProcessor()
-    for image,text_prompt in zip(images,text_prompt_list):
+    for image in  images:
         clip_image=clip_image_processor(images=image,return_tensors="pt").pixel_values
         mapping[CLIP_IMAGES].append(clip_image)
         mapping[IMAGES].append(img_transform(image.convert("RGB")))
@@ -67,7 +70,7 @@ def make_dataloader(images: list, text_prompt_list:list,prior_images:list, prior
                 TEXT_INPUT_IDS: torch.stack([example[TEXT_INPUT_IDS] for example in examples]),
                 IMAGES: torch.stack([example[IMAGES] for example in examples])
             }
-    train_dataset=CustomDataset(mapping)
+    train_dataset=CustomDataset(mapping, random_text_prompt)
 
     train_dataloader = DataLoader(
         train_dataset,

@@ -4,6 +4,7 @@ import torch
 from PIL import Image
 from accelerate import Accelerator
 from adapter_training_loop import loop
+from string_globals import *
 
 def get_trained_pipeline(
         pipeline:StableDiffusionPipeline,
@@ -81,6 +82,7 @@ def train_and_evaluate(image: Image,
     use_ip_adapter=False
     ip_adapter_image=None
     use_chosen_one=False
+    random_text_prompt=False
     if training_method=="dreambooth":
         text_encoder_target_modules=["q_proj", "v_proj"]
         text_encoder_config=LoraConfig(
@@ -121,7 +123,26 @@ def train_and_evaluate(image: Image,
         images=[image]*5
         text_prompt_list=[text_prompt]*5
     elif training_method=="textual_inversion":
-        return
+        initializer_token="person"
+        for token in [ "man "," woman "," boy "," girl "]:
+            if text_prompt.find(token)!=-1:
+                initializer_token=token
+        placeholder_tokens=[NEW_TOKEN]
+        tokenizer.add_tokens(placeholder_tokens)
+        token_ids = tokenizer.encode(initializer_token, add_special_tokens=False)
+        initializer_token_id = token_ids[0]
+        placeholder_token_ids = tokenizer.convert_tokens_to_ids()
+
+        # Resize the token embeddings as we are adding new special tokens to the tokenizer
+        text_encoder.resize_token_embeddings(len(tokenizer))
+
+        # Initialise the newly added placeholder token with the embeddings of the initializer token
+        token_embeds = text_encoder.get_input_embeddings().weight.data
+        with torch.no_grad():
+            for token_id in placeholder_token_ids:
+                token_embeds[token_id] = token_embeds[initializer_token_id].clone()
+
+        text_encoder.get_input_embeddings().requires_grad_(True)
     for model in [vae,unet,text_encoder]:
         trainable_parameters+=[p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(
@@ -141,6 +162,7 @@ def train_and_evaluate(image: Image,
             optimizer=optimizer,
             accelerator=accelerator,
             use_ip_adapter=use_ip_adapter,
+            random_text_prompt=random_text_prompt,
             with_prior_preservation=with_prior_preservation,
             prior_text_prompt_list=prior_text_prompt_list,
             prior_images=prior_images,

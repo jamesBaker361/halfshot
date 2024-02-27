@@ -19,6 +19,7 @@ def loop(images: list,
                accelerator:object,
                use_ip_adapter:bool,
                with_prior_preservation:bool,
+               random_text_prompt:bool,
                prior_text_prompt_list:list,
                 prior_images:list,
                prior_loss_weight:float,
@@ -55,7 +56,7 @@ def loop(images: list,
     tokenizer=pipeline.tokenizer
     vae=pipeline.vae
     text_encoder=pipeline.text_encoder
-    dataloader=make_dataloader(images,text_prompt_list,prior_images,prior_text_prompt_list, tokenizer,size, train_batch_size)
+    dataloader=make_dataloader(images,text_prompt_list,prior_images,prior_text_prompt_list, tokenizer,size, train_batch_size,random_text_prompt)
     unet=pipeline.unet
     lora_layers = filter(lambda p: p.requires_grad, unet.parameters()) #optimizer should already be listening to whatever layers we're optimzing
     unet,text_encoder,vae, optimizer, dataloader= accelerator.prepare(
