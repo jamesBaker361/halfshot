@@ -1,3 +1,15 @@
+
+import os
+cache_dir="/scratch/jlb638/trans_cache"
+os.environ["TRANSFORMERS_CACHE"]=cache_dir
+os.environ["HF_HOME"]=cache_dir
+os.environ["HF_HUB_CACHE"]=cache_dir
+import torch
+torch.hub.set_dir("/scratch/jlb638/torch_hub_cache")
+from transformers import ViTImageProcessor, ViTModel
+from sklearn.cluster import KMeans
+from scipy.spatial.distance import cdist
+import numpy as np
 from diffusers import AutoencoderKL, DDPMScheduler, DiffusionPipeline, StableDiffusionPipeline
 from peft import LoraConfig, get_peft_model
 import torch
@@ -8,6 +20,7 @@ from string_globals import *
 from transformers import CLIPProcessor, CLIPModel
 import numpy as np
 from numpy.linalg import norm
+from clustering import get_hidden_states,get_best_cluster_kmeans
 
 def get_trained_pipeline(
         pipeline:StableDiffusionPipeline,
@@ -45,6 +58,29 @@ evaluation_prompt_list=[
 
 clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
 clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+
+def prepare_textual_inversion(text_prompt:str, tokenizer:object,text_encoder):
+    initializer_token="person"
+    for token in [ "man "," woman "," boy "," girl "]:
+        if text_prompt.find(token)!=-1:
+            initializer_token=token
+    placeholder_tokens=[NEW_TOKEN]
+    tokenizer.add_tokens(placeholder_tokens)
+    token_ids = tokenizer.encode(initializer_token, add_special_tokens=False)
+    initializer_token_id = token_ids[0]
+    placeholder_token_ids = tokenizer.convert_tokens_to_ids(placeholder_tokens)
+
+    # Resize the token embeddings as we are adding new special tokens to the tokenizer
+    text_encoder.resize_token_embeddings(len(tokenizer))
+
+    # Initialise the newly added placeholder token with the embeddings of the initializer token
+    token_embeds = text_encoder.get_input_embeddings().weight.data
+    with torch.no_grad():
+        for token_id in placeholder_token_ids:
+            token_embeds[token_id] = token_embeds[initializer_token_id].clone()
+
+    text_encoder.get_input_embeddings().requires_grad_(True)
+    return tokenizer,text_encoder
 
 def evaluate_pipeline(image:Image,
                       text_prompt:str,
@@ -131,6 +167,7 @@ def train_and_evaluate(image: Image,
                         num_validation_images:int,
                         noise_offset:float,
                         max_grad_norm:float,
+                        chosen_one_args:dict={}
                        )->dict:
     pipeline=StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5")
     pipeline("nothing",num_inference_steps=2) #if we dont do this the properties wont instantiate correctly???
@@ -202,26 +239,7 @@ def train_and_evaluate(image: Image,
         images=[image]*5
         text_prompt_list=[text_prompt]*5
     elif training_method=="textual_inversion":
-        initializer_token="person"
-        for token in [ "man "," woman "," boy "," girl "]:
-            if text_prompt.find(token)!=-1:
-                initializer_token=token
-        placeholder_tokens=[NEW_TOKEN]
-        tokenizer.add_tokens(placeholder_tokens)
-        token_ids = tokenizer.encode(initializer_token, add_special_tokens=False)
-        initializer_token_id = token_ids[0]
-        placeholder_token_ids = tokenizer.convert_tokens_to_ids(placeholder_tokens)
-
-        # Resize the token embeddings as we are adding new special tokens to the tokenizer
-        text_encoder.resize_token_embeddings(len(tokenizer))
-
-        # Initialise the newly added placeholder token with the embeddings of the initializer token
-        token_embeds = text_encoder.get_input_embeddings().weight.data
-        with torch.no_grad():
-            for token_id in placeholder_token_ids:
-                token_embeds[token_id] = token_embeds[initializer_token_id].clone()
-
-        text_encoder.get_input_embeddings().requires_grad_(True)
+        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
         images=[image]*5
         text_prompt_list=[imagenet_template.format(text_prompt) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
@@ -259,4 +277,45 @@ def train_and_evaluate(image: Image,
             noise_offset=noise_offset,
             max_grad_norm=max_grad_norm
         )
-        return evaluate_pipeline(image,text_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter)
+    else:
+        n_generated_img=chosen_one_args["n_generated_img"] # how many images to generate and then cluster
+        convergence_scale=chosen_one_args["convergence_scale"] #when cluster distance < convergence * init_dist then we stop
+        min_cluster_size=chosen_one_args["min_cluster_size"] #ignore clusters smaller than this aka d_min_c
+        max_iterations=chosen_one_args["max_iterations"] #how many loops before we give up
+        #starting_cluster=chosen_one_args["starting_cluster"] #initial images
+        target_cluster_size=chosen_one_args["target_cluster_size"] #aka dsize_c
+        n_clusters=n_generated_img // target_cluster_size
+        #generator=
+        image_list=pipeline(text_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img).images
+        last_hidden_states=get_hidden_states(image_list)
+        init_dist=np.mean(cdist(last_hidden_states, last_hidden_states, 'euclidean'))
+        pairwise_distances=init_dist
+        iterations=0
+        while pairwise_distances>=convergence_scale*init_dist and iterations<max_iterations:
+            valid_image_list, pairwise_distances=get_best_cluster_kmeans(image_list,n_clusters, min_cluster_size)
+            pipeline=loop(
+                images=valid_image_list,
+                text_prompt_list=text_prompt_list,
+                ip_adapter_image=ip_adapter_image,
+                pipeline=pipeline,
+                start_epoch=0,
+                optimizer=optimizer,
+                accelerator=accelerator,
+                use_ip_adapter=use_ip_adapter,
+                random_text_prompt=random_text_prompt,
+                with_prior_preservation=with_prior_preservation,
+                prior_text_prompt_list=prior_text_prompt_list,
+                prior_images=prior_images,
+                prior_loss_weight=prior_loss_weight,
+                training_method=training_method,
+                epochs=1,
+                seed=seed,
+                timesteps_per_image=timesteps_per_image,
+                size=size,
+                train_batch_size=train_batch_size,
+                num_validation_images=num_validation_images,
+                noise_offset=noise_offset,
+                max_grad_norm=max_grad_norm)
+            image_list=pipeline(text_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img).images
+            iterations+=1
+    return evaluate_pipeline(image,text_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter)
