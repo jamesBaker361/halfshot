@@ -5,6 +5,9 @@ from PIL import Image
 from accelerate import Accelerator
 from adapter_training_loop import loop
 from string_globals import *
+from transformers import CLIPProcessor, CLIPModel
+import numpy as np
+from numpy.linalg import norm
 
 def get_trained_pipeline(
         pipeline:StableDiffusionPipeline,
@@ -36,11 +39,16 @@ evaluation_prompt_list=[
 ]
 
 evaluation_prompt_list=[
-    "a photo of {} at the beach" #this is just for testing
+    "a photo of {} at the beach", #this is just for testing
+    "a photo of {} in the jungle"
 ]
+
+clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
 def evaluate_pipeline(image:Image,
                       text_prompt:str,
+                      entity_name:str,
                       pipeline:StableDiffusionPipeline,
                       timesteps_per_image:int,
                       use_ip_adapter:bool)->dict:
@@ -48,13 +56,28 @@ def evaluate_pipeline(image:Image,
     generator=torch.Generator(pipeline.device)
     generator.manual_seed(123)
     for evaluation_prompt in evaluation_prompt_list:
-        prompt=evaluation_prompt.format(text_prompt)
+        prompt=evaluation_prompt.format(entity_name)
         if use_ip_adapter:
             eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,ip_adapter_image=image).images[0]
         else:
             eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator).images[0]
         evaluation_image_list.append(eval_image)
-    return {"pipeline":pipeline,"images":evaluation_image_list}
+    clip_inputs=clip_processor(text=[text_prompt], images=evaluation_image_list, return_tensors="pt", padding=True)
+
+    outputs = clip_model(**clip_inputs)
+    text_embeds=outputs.text_embeds.detach().numpy()[0]
+    image_embed_list=outputs.image_embeds.detach().numpy()
+    prompt_similarity_list=[]
+    identity_consistency_list=[]
+    for i in range(len(image_embed_list)):
+        vector_i=image_embed_list[i]
+        prompt_similarity_list.append(np.dot(vector_i, text_embeds)/(norm(vector_i)* norm(text_embeds)))
+        for j in range(i+1, len(image_embed_list)):
+            vector_j=image_embed_list[j]
+            identity_consistency_list.append(np.dot(vector_j,vector_i)/(norm(vector_i)*norm(vector_j)))
+    
+    return {"pipeline":pipeline,"images":evaluation_image_list,
+            "prompt_similarity":np.mean(prompt_similarity_list),"identity_consistency":np.mean(identity_consistency_list) }
     
 imagenet_template_list = [
     "a photo of a {}",
@@ -124,6 +147,7 @@ def train_and_evaluate(image: Image,
     ip_adapter_image=None
     use_chosen_one=False
     random_text_prompt=False
+    entity_name=text_prompt
     if training_method=="dreambooth":
         text_encoder_target_modules=["q_proj", "v_proj"]
         text_encoder_config=LoraConfig(
@@ -235,4 +259,4 @@ def train_and_evaluate(image: Image,
             noise_offset=noise_offset,
             max_grad_norm=max_grad_norm
         )
-        return evaluate_pipeline(image,text_prompt,pipeline,timesteps_per_image,use_ip_adapter)
+        return evaluate_pipeline(image,text_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter)
