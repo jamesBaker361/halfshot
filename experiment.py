@@ -180,6 +180,14 @@ def train_and_evaluate(image: Image,
                         max_grad_norm:float,
                         chosen_one_args:dict={}
                        )->dict:
+    """
+    image= the image we are starting with; for training without chosen one, we will have to make copies
+    of this image and train on the same image a bunch
+    text_prompt= the text prompt describing the character or whatever for ex: "a male character with a sword holding a sword and wearing a blue and black outfit"
+    prior_text_prompt= for dreambooth this is the prior, (should be Man, woman, boy, girl or person)
+    prior_images = images of prior text prompt
+    """
+    
     pipeline=StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5")
     pipeline("nothing",num_inference_steps=2) #if we dont do this the properties wont instantiate correctly???
     unet=pipeline.unet
@@ -188,6 +196,7 @@ def train_and_evaluate(image: Image,
     text_encoder=pipeline.text_encoder
     for model in [vae,unet,text_encoder]:
         model.requires_grad_(False)
+        #set everything to not be trainable by default
     trainable_parameters=[]
     with_prior_preservation=False
     prior_text_prompt_list=[]
@@ -219,14 +228,7 @@ def train_and_evaluate(image: Image,
         use_ip_adapter=True
         pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name="ip-adapter-plus-face_sd15.bin")
         unet_target_modules= ["to_q", "to_v", "query", "value"]
-        unet_config=LoraConfig(
-            r=8,
-            lora_alpha=32,
-            target_modules=unet_target_modules,
-            lora_dropout=0.0
-        )
-        unet=get_peft_model(unet,unet_config)
-        unet.train()
+        unet=prepare_unet(unet, unet_target_modules)
         images=[image]*5
         ip_adapter_image=image
         text_prompt_list=[text_prompt]*5
@@ -300,7 +302,8 @@ def train_and_evaluate(image: Image,
         #starting_cluster=chosen_one_args["starting_cluster"] #initial images
         target_cluster_size=chosen_one_args["target_cluster_size"] #aka dsize_c
         n_clusters=n_generated_img // target_cluster_size
-        #generator=
+
+        #generate the initial set of images using text_prompt
         image_list=pipeline(text_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img).images
         last_hidden_states=get_hidden_states(image_list)
         init_dist=np.mean(cdist(last_hidden_states, last_hidden_states, 'euclidean'))
