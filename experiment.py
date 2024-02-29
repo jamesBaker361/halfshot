@@ -243,6 +243,13 @@ def train_and_evaluate(image: Image,
         images=[image]*5
         text_prompt_list=[imagenet_template.format(text_prompt) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
+        entity_name=NEW_TOKEN
+    elif training_method=="chosen_one_textual_inversion":
+        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
+        text_prompt_list=[imagenet_template.format(text_prompt) for imagenet_template in imagenet_template_list]
+        random_text_prompt=True
+        use_chosen_one=True
+        entity_name=NEW_TOKEN
     for model in [vae,unet,text_encoder]:
         trainable_parameters+=[p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(
@@ -290,9 +297,12 @@ def train_and_evaluate(image: Image,
         last_hidden_states=get_hidden_states(image_list)
         init_dist=np.mean(cdist(last_hidden_states, last_hidden_states, 'euclidean'))
         pairwise_distances=init_dist
-        iterations=0
-        while pairwise_distances>=convergence_scale*init_dist and iterations<max_iterations:
+        iteration=0
+        while pairwise_distances>=convergence_scale*init_dist and iteration<max_iterations:
             valid_image_list, pairwise_distances=get_best_cluster_kmeans(image_list,n_clusters, min_cluster_size)
+            print(f"iteration {iteration} pairwise distances {pairwise_distances}")
+            if not random_text_prompt:
+                text_prompt_list=text_prompt_list*len(valid_image_list)
             pipeline=loop(
                 images=valid_image_list,
                 text_prompt_list=text_prompt_list,
@@ -317,5 +327,5 @@ def train_and_evaluate(image: Image,
                 noise_offset=noise_offset,
                 max_grad_norm=max_grad_norm)
             image_list=pipeline(text_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img).images
-            iterations+=1
+            iteration+=1
     return evaluate_pipeline(image,text_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter)

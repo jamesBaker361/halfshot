@@ -20,7 +20,7 @@ def get_hidden_states(image_list:list):
     vit_model = ViTModel.from_pretrained('facebook/dino-vitb16')
     vit_inputs = vit_processor(images=image_list, return_tensors="pt")
     vit_outputs=vit_model(**vit_inputs)
-    last_hidden_states = vit_outputs.last_hidden_state.detach().numpy()
+    last_hidden_states = vit_outputs.last_hidden_state.detach().numpy().reshape(len(image_list),-1)
     return last_hidden_states
 
 def get_best_cluster_kmeans(
@@ -39,7 +39,7 @@ def get_best_cluster_kmeans(
 
     dist_dict={}
     for label,v in cluster_dict.items():
-        center=k_means[label]
+        center=k_means.cluster_centers_[label]
         dist=np.mean([np.linalg.norm(center-embedding) for embedding in v])
         dist_dict[label]=dist
 
