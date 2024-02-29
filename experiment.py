@@ -249,6 +249,8 @@ def train_and_evaluate(image: Image,
         text_prompt_list=[imagenet_template.format(entity_name) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
         use_chosen_one=True
+        #generate the initial set of images using text_prompt
+        image_list=pipeline(text_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img).images
     elif training_method=="chosen_one_textual_inversion_facial_ip":
         use_ip_adapter=True
         pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name="ip-adapter-plus-face_sd15.bin")
@@ -260,6 +262,8 @@ def train_and_evaluate(image: Image,
         entity_name=NEW_TOKEN
         ip_adapter_image=image
         use_ip_adapter=True
+        #generate the initial set of images using text_prompt
+        image_list=pipeline(text_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img,ip_adapter_image=ip_adapter_image).images
     for model in [vae,unet,text_encoder]:
         trainable_parameters+=[p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(
@@ -303,8 +307,6 @@ def train_and_evaluate(image: Image,
         target_cluster_size=chosen_one_args["target_cluster_size"] #aka dsize_c
         n_clusters=n_generated_img // target_cluster_size
 
-        #generate the initial set of images using text_prompt
-        image_list=pipeline(text_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img).images
         last_hidden_states=get_hidden_states(image_list)
         init_dist=np.mean(cdist(last_hidden_states, last_hidden_states, 'euclidean'))
         pairwise_distances=init_dist
