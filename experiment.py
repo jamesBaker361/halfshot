@@ -237,15 +237,27 @@ def train_and_evaluate(image: Image,
     elif training_method=="textual_inversion":
         tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
         images=[image]*5
-        text_prompt_list=[imagenet_template.format(text_prompt) for imagenet_template in imagenet_template_list]
-        random_text_prompt=True
         entity_name=NEW_TOKEN
+        text_prompt_list=[imagenet_template.format(entity_name) for imagenet_template in imagenet_template_list]
+        random_text_prompt=True
     elif training_method=="chosen_one_textual_inversion": #this is what the OG chosen paper did
         tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
+        unet=prepare_unet(unet)
+        entity_name=NEW_TOKEN
+        text_prompt_list=[imagenet_template.format(entity_name) for imagenet_template in imagenet_template_list]
+        random_text_prompt=True
+        use_chosen_one=True
+    elif training_method=="chosen_one_textual_inversion_facial_ip":
+        use_ip_adapter=True
+        pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name="ip-adapter-plus-face_sd15.bin")
+        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
+        unet=prepare_unet(unet)
         text_prompt_list=[imagenet_template.format(text_prompt) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
         use_chosen_one=True
         entity_name=NEW_TOKEN
+        ip_adapter_image=image
+        use_ip_adapter=True
     for model in [vae,unet,text_encoder]:
         trainable_parameters+=[p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(
@@ -322,6 +334,6 @@ def train_and_evaluate(image: Image,
                 num_validation_images=num_validation_images,
                 noise_offset=noise_offset,
                 max_grad_norm=max_grad_norm)
-            image_list=pipeline(text_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img).images
+            image_list=pipeline(entity_name,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img).images
             iteration+=1
     return evaluate_pipeline(image,text_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter)
