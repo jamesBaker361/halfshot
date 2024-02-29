@@ -59,6 +59,17 @@ evaluation_prompt_list=[
 clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
 clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
+def prepare_unet(unet,unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"]):
+    config = LoraConfig(
+        r=8,
+        lora_alpha=32,
+        target_modules=unet_target_modules,
+        lora_dropout=0.0,
+        bias="none")
+    unet = get_peft_model(unet, config)
+    unet.train()
+    return unet
+
 def prepare_textual_inversion(text_prompt:str, tokenizer:object,text_encoder):
     initializer_token="person"
     for token in [ "man "," woman "," boy "," girl "]:
@@ -197,14 +208,7 @@ def train_and_evaluate(image: Image,
         text_encoder.train()
 
         unet_target_modules= ["to_q", "to_v", "query", "value"]
-        unet_config=LoraConfig(
-            r=8,
-            lora_alpha=32,
-            target_modules=unet_target_modules,
-            lora_dropout=0.0
-        )
-        unet=get_peft_model(unet,unet_config)
-        unet.train()
+        unet=prepare_unet(unet,unet_target_modules=unet_target_modules)
         with_prior_preservation=True
         prior_text_prompt_list=[prior_text_prompt]*len(prior_images)
         images=[image]*len(prior_images)
@@ -227,15 +231,7 @@ def train_and_evaluate(image: Image,
         ip_adapter_image=image
         text_prompt_list=[text_prompt]*5
     elif training_method=="unet_lora":
-        unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"]
-        config = LoraConfig(
-            r=8,
-            lora_alpha=32,
-            target_modules=unet_target_modules,
-            lora_dropout=0.0,
-            bias="none")
-        unet = get_peft_model(unet, config)
-        unet.train()
+        unet=prepare_unet(unet)
         images=[image]*5
         text_prompt_list=[text_prompt]*5
     elif training_method=="textual_inversion":
@@ -244,7 +240,7 @@ def train_and_evaluate(image: Image,
         text_prompt_list=[imagenet_template.format(text_prompt) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
         entity_name=NEW_TOKEN
-    elif training_method=="chosen_one_textual_inversion":
+    elif training_method=="chosen_one_textual_inversion": #this is what the OG chosen paper did
         tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
         text_prompt_list=[imagenet_template.format(text_prompt) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
