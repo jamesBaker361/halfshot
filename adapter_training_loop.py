@@ -50,6 +50,7 @@ def loop(images: list,
     with_prior_preservation: whether to use prior preservation (for dreambooth)
     noise_offset: https://www.crosslabs.org//blog/diffusion-with-offset-noise
     '''
+    print(f"begin training method  {training_method}")
     tracker=accelerator.get_tracker("wandb")
     for i in range(num_validation_images):
         wandb.define_metric(f"{training_method}_img_{i}",step_metric="custom_step")
