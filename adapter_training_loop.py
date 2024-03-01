@@ -63,6 +63,8 @@ def loop(images: list,
     unet,text_encoder,vae,tokenizer, optimizer, dataloader= accelerator.prepare(
         unet,text_encoder,vae,tokenizer, optimizer, dataloader
     )
+    if use_ip_adapter:
+        image_encoder=accelerator.prepare(pipeline.image_encoder)
     added_cond_kwargs={}
     weight_dtype=pipeline.dtype
     noise_scheduler = DDPMScheduler(num_train_timesteps=timesteps_per_image,clip_sample=False)
