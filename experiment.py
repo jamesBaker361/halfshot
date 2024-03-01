@@ -158,7 +158,7 @@ imagenet_template_list = [
 
 
 
-def train_and_evaluate(image: Image,
+def train_and_evaluate(init_image_list: Image,
                        text_prompt:str, 
                        accelerator:Accelerator,
                        learning_rate:float,
@@ -181,7 +181,7 @@ def train_and_evaluate(image: Image,
                         chosen_one_args:dict={}
                        )->dict:
     """
-    image= the image we are starting with; for training without chosen one, we will have to make copies
+    init_image_list= the images we are starting with
     of this image and train on the same image a bunch
     text_prompt= the text prompt describing the character or whatever for ex: "a male character with a sword holding a sword and wearing a blue and black outfit"
     prior_text_prompt= for dreambooth this is the prior, (should be Man, woman, boy, girl or person)
@@ -205,6 +205,7 @@ def train_and_evaluate(image: Image,
     use_chosen_one=False
     random_text_prompt=False
     entity_name=text_prompt
+    image=init_image_list[0]
     if training_method=="dreambooth":
         text_encoder_target_modules=["q_proj", "v_proj"]
         text_encoder_config=LoraConfig(
@@ -221,7 +222,24 @@ def train_and_evaluate(image: Image,
         with_prior_preservation=True
         prior_text_prompt_list=[prior_text_prompt]*len(prior_images)
         images=[image]*len(prior_images)
-        text_prompt_list=[text_prompt]*len(prior_images)
+        text_prompt_list=[NEW_TOKEN+" "+ text_prompt]*len(prior_images)
+    elif training_method=="dreambooth_multi": #this is just normal dreambooth with multiple images
+        text_encoder_target_modules=["q_proj", "v_proj"]
+        text_encoder_config=LoraConfig(
+            r=8,
+            lora_alpha=32,
+            target_modules=text_encoder_target_modules,
+            lora_dropout=0.0
+        )
+        text_encoder=get_peft_model(text_encoder,text_encoder_config)
+        text_encoder.train()
+
+        unet_target_modules= ["to_q", "to_v", "query", "value"]
+        unet=prepare_unet(unet,unet_target_modules=unet_target_modules)
+        with_prior_preservation=True
+        prior_text_prompt_list=[prior_text_prompt]*len(prior_images)
+        images=init_image_list
+        text_prompt_list=[NEW_TOKEN+" "+ text_prompt]*len(prior_images)
     elif training_method=="ip_adapter":
         #if trainable with ip-adapter well only be training the unet
         #this particular case well not actually use b/c training images=ip image
@@ -250,6 +268,7 @@ def train_and_evaluate(image: Image,
         random_text_prompt=True
         use_chosen_one=True
         #generate the initial set of images using text_prompt
+        n_generated_img=chosen_one_args["n_generated_img"] # how many images to generate and then cluster
         image_list=pipeline(text_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img).images
     elif training_method=="chosen_one_textual_inversion_facial_ip":
         use_ip_adapter=True
@@ -263,6 +282,7 @@ def train_and_evaluate(image: Image,
         ip_adapter_image=image
         use_ip_adapter=True
         #generate the initial set of images using text_prompt
+        n_generated_img=chosen_one_args["n_generated_img"] # how many images to generate and then cluster
         image_list=pipeline(text_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img,ip_adapter_image=ip_adapter_image).images
     for model in [vae,unet,text_encoder]:
         trainable_parameters+=[p for p in model.parameters() if p.requires_grad]
@@ -339,6 +359,9 @@ def train_and_evaluate(image: Image,
                 num_validation_images=num_validation_images,
                 noise_offset=noise_offset,
                 max_grad_norm=max_grad_norm)
-            image_list=pipeline(entity_name,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img).images
+            if use_ip_adapter:
+                image_list=pipeline(entity_name,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img,ip_adapter_image=ip_adapter_image).images
+            else:
+                image_list=pipeline(entity_name,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img).images
             iteration+=1
-    return evaluate_pipeline(image,text_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter)
+    return evaluate_pipeline(init_image_list,text_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter)
