@@ -59,15 +59,14 @@ def loop(images: list,
     dataloader=make_dataloader(images,text_prompt_list,prior_images,prior_text_prompt_list, tokenizer,size, train_batch_size,random_text_prompt)
     unet=pipeline.unet
     lora_layers = filter(lambda p: p.requires_grad, unet.parameters()) #optimizer should already be listening to whatever layers we're optimzing
-    unet,text_encoder,vae, optimizer, dataloader= accelerator.prepare(
-        unet,text_encoder,vae, optimizer, dataloader
+    unet,text_encoder,vae,tokenizer, optimizer, dataloader= accelerator.prepare(
+        unet,text_encoder,vae,tokenizer, optimizer, dataloader
     )
     added_cond_kwargs={}
     weight_dtype=pipeline.dtype
     noise_scheduler = DDPMScheduler(num_train_timesteps=timesteps_per_image,clip_sample=False)
     global_step=0
     for e in range(start_epoch, epochs):
-        unet.train() #only if unet has trainable layers
         train_loss = 0.0
         for step,batch in enumerate(dataloader):
             with accelerator.accumulate(unet):
