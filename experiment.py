@@ -21,6 +21,7 @@ from transformers import CLIPProcessor, CLIPModel
 import numpy as np
 from numpy.linalg import norm
 from clustering import get_hidden_states,get_best_cluster_kmeans
+import time
 
 def get_trained_pipeline(
         pipeline:StableDiffusionPipeline,
@@ -187,7 +188,7 @@ def train_and_evaluate(init_image_list: Image,
     prior_text_prompt= for dreambooth this is the prior, (should be Man, woman, boy, girl or person)
     prior_images = images of prior text prompt
     """
-    
+    start=time.time()
     pipeline=StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5")
     pipeline("nothing",num_inference_steps=2) #if we dont do this the properties wont instantiate correctly???
     unet=pipeline.unet
@@ -364,4 +365,8 @@ def train_and_evaluate(init_image_list: Image,
             else:
                 image_list=pipeline(entity_name,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img).images
             iteration+=1
+    end=time.time()
+    seconds=end-start
+    hours=seconds/3600
+    print(f"{training_method} training elapsed {seconds} seconds == {hours} hours")
     return evaluate_pipeline(init_image_list,text_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter)
