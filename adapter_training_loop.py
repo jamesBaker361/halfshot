@@ -129,7 +129,7 @@ def loop(images: list,
                 optimizer.zero_grad()
             if accelerator.sync_gradients:
                 global_step += 1
-                accelerator.log({f"{training_method}_train_loss": train_loss}, step=global_step)
+                accelerator.log({f"{training_method}_train_loss": train_loss})
                 train_loss = 0.0
         if accelerator.is_main_process:
             '''save_path = os.path.join(output_dir, f"checkpoint-{e}")
