@@ -149,12 +149,12 @@ def loop(images: list,
 
             path="tmp.png"
             for i in range(num_validation_images):
-                text_prompt=text_prompt_list[i]
+                text_prompt=validation_prompt_list[i %len(validation_prompt_list)]
                 added_cond_kwargs={}
                 if use_ip_adapter:
-                    img=pipeline(text_prompt, num_inference_steps=timesteps_per_image, generator=generator,ip_adapter_image=ip_adapter_image).images[0]
+                    img=pipeline(text_prompt, num_inference_steps=timesteps_per_image, generator=generator,ip_adapter_image=ip_adapter_image,safety_checker=None).images[0]
                 else:
-                    img=pipeline(text_prompt, num_inference_steps=timesteps_per_image, generator=generator).images[0]
+                    img=pipeline(text_prompt, num_inference_steps=timesteps_per_image, generator=generator,safety_checker=None).images[0]
                 img.save(path)
                 tracker.log({f"{training_method}_img_{i}": wandb.Image(path)})
 

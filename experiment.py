@@ -369,9 +369,9 @@ def train_and_evaluate(init_image_list: Image,
                 noise_offset=noise_offset,
                 max_grad_norm=max_grad_norm)
             if use_ip_adapter:
-                image_list=pipeline(entity_name,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img,ip_adapter_image=ip_adapter_image).images
+                image_list=pipeline(entity_name,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img,safety_checker=None,ip_adapter_image=ip_adapter_image).images
             else:
-                image_list=pipeline(entity_name,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img).images
+                image_list=pipeline(entity_name,num_inference_steps=timesteps_per_image,safety_checker=None,num_images_per_prompt=n_generated_img).images
             iteration+=1
     end=time.time()
     seconds=end-start
