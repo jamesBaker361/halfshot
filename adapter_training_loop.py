@@ -155,6 +155,6 @@ def loop(images: list,
                 else:
                     img=pipeline(text_prompt, num_inference_steps=timesteps_per_image, generator=generator).images[0]
                 img.save(path)
-                tracker.log({f"{training_method}_img_{i}": wandb.Image(path), "custom_step":e})
+                tracker.log({f"{training_method}_img_{i}": wandb.Image(path)})
 
     return pipeline
