@@ -190,7 +190,8 @@ def train_and_evaluate(init_image_list: Image,
     """
     start=time.time()
     pipeline=StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5")
-    pipeline("nothing",num_inference_steps=2) #if we dont do this the properties wont instantiate correctly???
+    pipeline.safety_checker=None
+    pipeline("nothing",num_inference_steps=2,safety_checker=None) #if we dont do this the properties wont instantiate correctly???
     unet=pipeline.unet
     vae=pipeline.vae
     tokenizer=pipeline.tokenizer
@@ -272,9 +273,6 @@ def train_and_evaluate(init_image_list: Image,
         text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
         use_chosen_one=True
-        #generate the initial set of images using text_prompt
-        n_generated_img=chosen_one_args["n_generated_img"] # how many images to generate and then cluster
-        image_list=pipeline(text_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img).images
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
     elif training_method=="chosen_one_textual_inversion_facial_ip":
         use_ip_adapter=True
@@ -287,9 +285,6 @@ def train_and_evaluate(init_image_list: Image,
         entity_name=NEW_TOKEN
         ip_adapter_image=image
         use_ip_adapter=True
-        #generate the initial set of images using text_prompt
-        n_generated_img=chosen_one_args["n_generated_img"] # how many images to generate and then cluster
-        image_list=pipeline(text_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img,ip_adapter_image=ip_adapter_image).images
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
     for model in [vae,unet,text_encoder]:
         trainable_parameters+=[p for p in model.parameters() if p.requires_grad]
@@ -334,7 +329,10 @@ def train_and_evaluate(init_image_list: Image,
         #starting_cluster=chosen_one_args["starting_cluster"] #initial images
         target_cluster_size=chosen_one_args["target_cluster_size"] #aka dsize_c
         n_clusters=n_generated_img // target_cluster_size
-
+        if use_ip_adapter:
+            image_list=pipeline(text_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img,safety_checker=None,ip_adapter_image=ip_adapter_image).images
+        else:
+            image_list=pipeline(text_prompt,num_inference_steps=timesteps_per_image,safety_checker=None,num_images_per_prompt=n_generated_img).images
         last_hidden_states=get_hidden_states(image_list)
         init_dist=np.mean(cdist(last_hidden_states, last_hidden_states, 'euclidean'))
         pairwise_distances=init_dist
