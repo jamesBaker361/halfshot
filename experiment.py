@@ -253,11 +253,11 @@ def train_and_evaluate(init_image_list: Image,
         text_prompt_list=[text_prompt]*5
     elif training_method=="unet_lora":
         unet=prepare_unet(unet)
-        images=[image]*5
+        images=init_image_list
         text_prompt_list=[text_prompt]*5
     elif training_method=="textual_inversion":
         tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
-        images=[image]*5
+        images=init_image_list
         entity_name=NEW_TOKEN
         text_prompt_list=[imagenet_template.format(entity_name) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
