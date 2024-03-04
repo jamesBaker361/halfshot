@@ -264,8 +264,7 @@ def train_and_evaluate(init_image_list: Image,
     elif training_method=="chosen_one_textual_inversion": #this is what the OG chosen paper did
         tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
         unet=prepare_unet(unet)
-        entity_name=NEW_TOKEN
-        text_prompt_list=[imagenet_template.format(entity_name) for imagenet_template in imagenet_template_list]
+        text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
         use_chosen_one=True
         #generate the initial set of images using text_prompt
@@ -276,7 +275,7 @@ def train_and_evaluate(init_image_list: Image,
         pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name="ip-adapter-plus-face_sd15.bin")
         tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
         unet=prepare_unet(unet)
-        text_prompt_list=[imagenet_template.format(text_prompt) for imagenet_template in imagenet_template_list]
+        text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
         use_chosen_one=True
         entity_name=NEW_TOKEN
@@ -334,7 +333,7 @@ def train_and_evaluate(init_image_list: Image,
         iteration=0
         while pairwise_distances>=convergence_scale*init_dist and iteration<max_iterations:
             valid_image_list, pairwise_distances=get_best_cluster_kmeans(image_list,n_clusters, min_cluster_size)
-            print(f"iteration {iteration} pairwise distances {pairwise_distances}")
+            print(f"iteration {iteration} pairwise distances {pairwise_distances} vs target {convergence_scale*init_dist}")
             if not random_text_prompt:
                 text_prompt_list=text_prompt_list*len(valid_image_list)
             pipeline=loop(
