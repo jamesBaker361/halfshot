@@ -224,6 +224,7 @@ def train_and_evaluate(init_image_list: Image,
         prior_text_prompt_list=[prior_text_prompt]*len(prior_images)
         images=[image]*len(prior_images)
         text_prompt_list=[NEW_TOKEN+" "+ text_prompt]*len(prior_images)
+        validation_prompt_list=text_prompt_list
     elif training_method=="dreambooth_multi": #this is just normal dreambooth with multiple images
         text_encoder_target_modules=["q_proj", "v_proj"]
         text_encoder_config=LoraConfig(
@@ -241,6 +242,7 @@ def train_and_evaluate(init_image_list: Image,
         prior_text_prompt_list=[prior_text_prompt]*len(prior_images)
         images=init_image_list
         text_prompt_list=[NEW_TOKEN+" "+ text_prompt]*len(prior_images)
+        validation_prompt_list=text_prompt_list
     elif training_method=="ip_adapter":
         #if trainable with ip-adapter well only be training the unet
         #this particular case well not actually use b/c training images=ip image
@@ -251,16 +253,19 @@ def train_and_evaluate(init_image_list: Image,
         images=[image]*5
         ip_adapter_image=image
         text_prompt_list=[text_prompt]*5
+        validation_prompt_list=text_prompt_list
     elif training_method=="unet_lora":
         unet=prepare_unet(unet)
         images=init_image_list
         text_prompt_list=[text_prompt]*5
+        validation_prompt_list=text_prompt_list
     elif training_method=="textual_inversion":
         tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
         images=init_image_list
         entity_name=NEW_TOKEN
         text_prompt_list=[imagenet_template.format(entity_name) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
+        validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
     elif training_method=="chosen_one_textual_inversion": #this is what the OG chosen paper did
         tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
         unet=prepare_unet(unet)
@@ -270,6 +275,7 @@ def train_and_evaluate(init_image_list: Image,
         #generate the initial set of images using text_prompt
         n_generated_img=chosen_one_args["n_generated_img"] # how many images to generate and then cluster
         image_list=pipeline(text_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img).images
+        validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
     elif training_method=="chosen_one_textual_inversion_facial_ip":
         use_ip_adapter=True
         pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name="ip-adapter-plus-face_sd15.bin")
@@ -284,6 +290,7 @@ def train_and_evaluate(init_image_list: Image,
         #generate the initial set of images using text_prompt
         n_generated_img=chosen_one_args["n_generated_img"] # how many images to generate and then cluster
         image_list=pipeline(text_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img,ip_adapter_image=ip_adapter_image).images
+        validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
     for model in [vae,unet,text_encoder]:
         trainable_parameters+=[p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(
@@ -297,6 +304,7 @@ def train_and_evaluate(init_image_list: Image,
         pipeline=loop(
             images=images,
             text_prompt_list=text_prompt_list,
+            validation_prompt_list=validation_prompt_list,
             ip_adapter_image=ip_adapter_image,
             pipeline=pipeline,
             start_epoch=0,
@@ -339,6 +347,7 @@ def train_and_evaluate(init_image_list: Image,
             pipeline=loop(
                 images=valid_image_list,
                 text_prompt_list=text_prompt_list,
+                validation_prompt_list=validation_prompt_list,
                 ip_adapter_image=ip_adapter_image,
                 pipeline=pipeline,
                 start_epoch=0,

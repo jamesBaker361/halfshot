@@ -12,6 +12,7 @@ import torch.nn.functional as F
 
 def loop(images: list,
                text_prompt_list:list,
+               validation_prompt_list:list,
                ip_adapter_image: Image,
                pipeline:StableDiffusionPipeline,
                start_epoch:int,
