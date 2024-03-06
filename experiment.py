@@ -20,7 +20,7 @@ from string_globals import *
 from transformers import CLIPProcessor, CLIPModel
 import numpy as np
 from numpy.linalg import norm
-from clustering import get_hidden_states,get_best_cluster_kmeans
+from clustering import get_hidden_states,get_best_cluster_kmeans,get_best_cluster_sorted
 import time
 
 def get_trained_pipeline(
@@ -178,7 +178,7 @@ imagenet_template_list = [
 
 
 
-def train_and_evaluate(init_image_list: Image,
+def train_and_evaluate(init_image_list: list,
                        text_prompt:str, 
                        accelerator:Accelerator,
                        learning_rate:float,
@@ -315,6 +315,29 @@ def train_and_evaluate(init_image_list: Image,
         use_ip_adapter=True
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
         cluster_function=get_best_cluster_kmeans
+    elif training_method ==CHOSEN_NEG:
+        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder,initializer_token=prior_text_prompt)
+        unet=prepare_unet(unet)
+        text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
+        random_text_prompt=True
+        use_chosen_one=True
+        entity_name=NEW_TOKEN
+        validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
+        cluster_text_prompt=negative_prompt
+        cluster_function=get_best_cluster_sorted
+        chosen_one_args["n_generated_img"]=int(chosen_one_args["n_generated_img"]/retain_fraction)
+    elif training_method==CHOSEN_TARGET:
+        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder,initializer_token=prior_text_prompt)
+        unet=prepare_unet(unet)
+        text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
+        random_text_prompt=True
+        use_chosen_one=True
+        entity_name=NEW_TOKEN
+        validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
+        cluster_text_prompt=target_prompt
+        cluster_function=get_best_cluster_sorted
+        negative=False
+        chosen_one_args["n_generated_img"]=int(chosen_one_args["n_generated_img"]/retain_fraction)
     for model in [vae,unet,text_encoder]:
         trainable_parameters+=[p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(
