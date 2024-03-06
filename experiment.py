@@ -71,11 +71,12 @@ def prepare_unet(unet,unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"]):
     unet.train()
     return unet
 
-def prepare_textual_inversion(text_prompt:str, tokenizer:object,text_encoder):
-    initializer_token="person"
+def prepare_textual_inversion(text_prompt:str, tokenizer:object,text_encoder,initializer_token:str):
     for token in [ "man "," woman "," boy "," girl "]:
         if text_prompt.find(token)!=-1:
             initializer_token=token
+    if initializer_token=="":
+        initializer_token="person"
     placeholder_tokens=[NEW_TOKEN]
     tokenizer.add_tokens(placeholder_tokens)
     token_ids = tokenizer.encode(initializer_token, add_special_tokens=False)
@@ -105,6 +106,7 @@ def evaluate_pipeline(image:Image,
     generator.manual_seed(123)
     for evaluation_prompt in evaluation_prompt_list:
         prompt=evaluation_prompt.format(entity_name)
+        print(f"eval prompt {prompt}")
         if use_ip_adapter:
             eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,ip_adapter_image=image).images[0]
         else:
@@ -225,6 +227,7 @@ def train_and_evaluate(init_image_list: Image,
         prior_text_prompt_list=[prior_text_prompt]*len(prior_images)
         images=[image]*len(prior_images)
         text_prompt_list=[NEW_TOKEN+" "+ text_prompt]*len(prior_images)
+        entity_name=NEW_TOKEN+" "+text_prompt
         validation_prompt_list=text_prompt_list
     elif training_method=="dreambooth_multi": #this is just normal dreambooth with multiple images
         text_encoder_target_modules=["q_proj", "v_proj"]
@@ -244,6 +247,7 @@ def train_and_evaluate(init_image_list: Image,
         images=init_image_list
         text_prompt_list=[NEW_TOKEN+" "+ text_prompt]*len(prior_images)
         validation_prompt_list=text_prompt_list
+        entity_name=NEW_TOKEN+" "+text_prompt
     elif training_method=="ip_adapter":
         #if trainable with ip-adapter well only be training the unet
         #this particular case well not actually use b/c training images=ip image
@@ -261,23 +265,24 @@ def train_and_evaluate(init_image_list: Image,
         text_prompt_list=[text_prompt]*5
         validation_prompt_list=text_prompt_list
     elif training_method=="textual_inversion":
-        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
+        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder,initializer_token=prior_text_prompt)
         images=init_image_list
         entity_name=NEW_TOKEN
         text_prompt_list=[imagenet_template.format(entity_name) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
     elif training_method=="chosen_one_textual_inversion": #this is what the OG chosen paper did
-        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
+        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder,initializer_token=prior_text_prompt)
         unet=prepare_unet(unet)
         text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
         use_chosen_one=True
+        entity_name=NEW_TOKEN
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
     elif training_method=="chosen_one_textual_inversion_facial_ip":
         use_ip_adapter=True
         pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name="ip-adapter-plus-face_sd15.bin")
-        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
+        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder,initializer_token=prior_text_prompt)
         unet=prepare_unet(unet)
         text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
