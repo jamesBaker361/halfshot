@@ -210,7 +210,7 @@ def train_and_evaluate(init_image_list: Image,
     random_text_prompt=False
     entity_name=text_prompt
     image=init_image_list[0]
-    if training_method=="dreambooth":
+    if training_method==DB:
         text_encoder_target_modules=["q_proj", "v_proj"]
         text_encoder_config=LoraConfig(
             r=8,
@@ -229,7 +229,7 @@ def train_and_evaluate(init_image_list: Image,
         text_prompt_list=[NEW_TOKEN+" "+ text_prompt]*len(prior_images)
         entity_name=NEW_TOKEN+" "+text_prompt
         validation_prompt_list=text_prompt_list
-    elif training_method=="dreambooth_multi": #this is just normal dreambooth with multiple images
+    elif training_method==DB_MULTI: #this is just normal dreambooth with multiple images
         text_encoder_target_modules=["q_proj", "v_proj"]
         text_encoder_config=LoraConfig(
             r=8,
@@ -248,7 +248,7 @@ def train_and_evaluate(init_image_list: Image,
         text_prompt_list=[NEW_TOKEN+" "+ text_prompt]*len(prior_images)
         validation_prompt_list=text_prompt_list
         entity_name=NEW_TOKEN+" "+text_prompt
-    elif training_method=="ip_adapter":
+    elif training_method==IP:
         #if trainable with ip-adapter well only be training the unet
         #this particular case well not actually use b/c training images=ip image
         use_ip_adapter=True
@@ -259,19 +259,19 @@ def train_and_evaluate(init_image_list: Image,
         ip_adapter_image=image
         text_prompt_list=[text_prompt]*5
         validation_prompt_list=text_prompt_list
-    elif training_method=="unet_lora":
+    elif training_method==UNET:
         unet=prepare_unet(unet)
         images=init_image_list
         text_prompt_list=[text_prompt]*5
         validation_prompt_list=text_prompt_list
-    elif training_method=="textual_inversion":
+    elif training_method==TEX_INV:
         tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder,initializer_token=prior_text_prompt)
         images=init_image_list
         entity_name=NEW_TOKEN
         text_prompt_list=[imagenet_template.format(entity_name) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
-    elif training_method=="chosen_one_textual_inversion": #this is what the OG chosen paper did
+    elif training_method==CHOSEN_TEX_INV: #this is what the OG chosen paper did
         tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder,initializer_token=prior_text_prompt)
         unet=prepare_unet(unet)
         text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
@@ -279,7 +279,7 @@ def train_and_evaluate(init_image_list: Image,
         use_chosen_one=True
         entity_name=NEW_TOKEN
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
-    elif training_method=="chosen_one_textual_inversion_facial_ip":
+    elif training_method==CHOSEN_TEX_INV_IP:
         use_ip_adapter=True
         pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name="ip-adapter-plus-face_sd15.bin")
         tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder,initializer_token=prior_text_prompt)
