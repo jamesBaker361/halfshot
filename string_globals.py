@@ -16,3 +16,8 @@ CHOSEN_NEG="chosen_one_negative_prompt"
 CHOSEN_TARGET="chosen_one_target_prompt"
 LOL_SUFFIX=" in the style of league of legends"
 NEGATIVE_PROMPT="blurry,text,low quality,logo,poorly drawn face,horror,mutation"
+
+CHOSEN_SUITE="chosen_suite"
+test_suite_dict={
+    CHOSEN_SUITE:[CHOSEN_TARGET, CHOSEN_NEG, CHOSEN_TEX_INV]
+}

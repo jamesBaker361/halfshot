@@ -64,6 +64,7 @@ parser.add_argument("--retain_fraction",type=float,default=0.5)
 parser.add_argument("--negative_prompt",type=str,default=NEGATIVE_PROMPT)
 parser.add_argument("--target_prompt",type=str,default=LOL_SUFFIX)
 parser.add_argument("--limit",type=int,default=30, help="n characters to try to do")
+parser.add_argument("--training_method_suite",type=str, default=CHOSEN_SUITE)
 
 def main(args):
     accelerator=Accelerator(log_with="wandb")
