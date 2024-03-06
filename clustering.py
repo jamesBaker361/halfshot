@@ -8,7 +8,7 @@ os.environ["HF_HOME"]=cache_dir
 os.environ["HF_HUB_CACHE"]=cache_dir
 import torch
 torch.hub.set_dir("/scratch/jlb638/torch_hub_cache")
-from transformers import ViTImageProcessor, ViTModel
+from transformers import ViTImageProcessor, ViTModel,CLIPProcessor, CLIPModel
 from sklearn.cluster import KMeans
 from scipy.spatial.distance import cdist
 import numpy as np
@@ -26,7 +26,7 @@ def get_hidden_states(image_list:list):
 def get_best_cluster_kmeans(
         image_list:list,
                             n_clusters:int,
-                            min_cluster_size:int):
+                            min_cluster_size:int,*args):
     last_hidden_states=get_hidden_states(image_list)
     k_means = KMeans(n_clusters=n_clusters, random_state=0).fit(last_hidden_states)
     
@@ -52,3 +52,30 @@ def get_best_cluster_kmeans(
         if label==min_label:
             valid_image_list.append(image)
     return valid_image_list, dist_dict[min_label]
+
+def get_ranked_images_list(image_list:list, text_prompt:str)->list:
+    clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+    clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+    clip_inputs=clip_processor(text=[text_prompt], images=image_list, return_tensors="pt", padding=True)
+    clip_outputs = clip_model(**clip_inputs)
+    logits_per_image=clip_outputs.logits_per_image.detach().numpy()[0]
+    pair_list=[ (logit,image) for logit,image in zip(logits_per_image, image_list)]
+    pair_list.sort(key=lambda x: x[0])
+    print([logit for (logit,image) in pair_list][:len(image_list)//5])
+    return [image for (logit,image) in pair_list]
+
+
+def get_best_cluster_sorted(
+        image_list:list,
+        n_clusters:int,
+        min_cluster_size:int,
+        text_prompt:str,
+        retain_fraction:float,
+        negative:bool):
+    ranked_image_list=get_ranked_images_list(image_list, text_prompt)
+    limit=int(len(image_list) * retain_fraction)
+    if negative:
+        ranked_image_list=ranked_image_list[:limit]
+    else:
+        ranked_image_list=ranked_image_list[-limit:]
+    return get_best_cluster_kmeans(image_list,n_clusters, min_cluster_size)

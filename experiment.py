@@ -100,7 +100,9 @@ def evaluate_pipeline(image:Image,
                       entity_name:str,
                       pipeline:StableDiffusionPipeline,
                       timesteps_per_image:int,
-                      use_ip_adapter:bool)->dict:
+                      use_ip_adapter:bool,
+                      negative_prompt:str,
+                      target_prompt:str)->dict:
     evaluation_image_list=[]
     generator=torch.Generator(pipeline.device)
     generator.manual_seed(123)
@@ -108,26 +110,41 @@ def evaluate_pipeline(image:Image,
         prompt=evaluation_prompt.format(entity_name)
         print(f"eval prompt {prompt}")
         if use_ip_adapter:
-            eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,ip_adapter_image=image).images[0]
+            eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,ip_adapter_image=image,negative_prompt=negative_prompt).images[0]
         else:
-            eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator).images[0]
+            eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,negative_prompt=negative_prompt).images[0]
         evaluation_image_list.append(eval_image)
-    clip_inputs=clip_processor(text=[text_prompt], images=evaluation_image_list, return_tensors="pt", padding=True)
+    if negative_prompt in ["", " "]:
+        negative_prompt=text_prompt
+    if target_prompt in ["", " "]:
+        target_prompt=text_prompt
+    text_list=[text_prompt, negative_prompt, target_prompt]
+    clip_inputs=clip_processor(text=text_list, images=evaluation_image_list, return_tensors="pt", padding=True)
 
     outputs = clip_model(**clip_inputs)
     text_embeds=outputs.text_embeds.detach().numpy()[0]
+    negative_text_embeds=outputs.text_embeds.detach().numpy()[1]
+    target_text_embeds=outputs.text_embeds.detach().numpy()[2]
     image_embed_list=outputs.image_embeds.detach().numpy()
     prompt_similarity_list=[]
+    negative_prompt_similarity_list=[]
+    target_prompt_similarity_list=[]
+
     identity_consistency_list=[]
     for i in range(len(image_embed_list)):
         vector_i=image_embed_list[i]
         prompt_similarity_list.append(np.dot(vector_i, text_embeds)/(norm(vector_i)* norm(text_embeds)))
+        negative_prompt_similarity_list.append(np.dot(vector_i, negative_text_embeds)/(norm(vector_i)* norm(negative_text_embeds)))
+        target_prompt_similarity_list.append(np.dot(vector_i, target_text_embeds)/(norm(vector_i)* norm(target_text_embeds)))
         for j in range(i+1, len(image_embed_list)):
             vector_j=image_embed_list[j]
             identity_consistency_list.append(np.dot(vector_j,vector_i)/(norm(vector_i)*norm(vector_j)))
     
     return {"pipeline":pipeline,"images":evaluation_image_list,
-            "prompt_similarity":np.mean(prompt_similarity_list),"identity_consistency":np.mean(identity_consistency_list) }
+            "prompt_similarity":np.mean(prompt_similarity_list),
+            "identity_consistency":np.mean(identity_consistency_list),
+             "negative_prompt_similarity":np.mean(negative_prompt_similarity_list),
+              "target_prompt_similarity": np.mean(target_prompt_similarity_list) }
     
 imagenet_template_list = [
     "a photo of a {}",
@@ -181,6 +198,9 @@ def train_and_evaluate(init_image_list: Image,
                         num_validation_images:int,
                         noise_offset:float,
                         max_grad_norm:float,
+                        negative_prompt:str,
+                        target_prompt:str,
+                        retain_fraction:float,
                         chosen_one_args:dict={}
                        )->dict:
     """
@@ -210,6 +230,8 @@ def train_and_evaluate(init_image_list: Image,
     random_text_prompt=False
     entity_name=text_prompt
     image=init_image_list[0]
+    negative=True
+    cluster_text_prompt=text_prompt
     if training_method==DB:
         text_encoder_target_modules=["q_proj", "v_proj"]
         text_encoder_config=LoraConfig(
@@ -279,6 +301,7 @@ def train_and_evaluate(init_image_list: Image,
         use_chosen_one=True
         entity_name=NEW_TOKEN
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
+        cluster_function=get_best_cluster_kmeans
     elif training_method==CHOSEN_TEX_INV_IP:
         use_ip_adapter=True
         pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name="ip-adapter-plus-face_sd15.bin")
@@ -291,6 +314,7 @@ def train_and_evaluate(init_image_list: Image,
         ip_adapter_image=image
         use_ip_adapter=True
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
+        cluster_function=get_best_cluster_kmeans
     for model in [vae,unet,text_encoder]:
         trainable_parameters+=[p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(
@@ -343,7 +367,12 @@ def train_and_evaluate(init_image_list: Image,
         pairwise_distances=init_dist
         iteration=0
         while pairwise_distances>=convergence_scale*init_dist and iteration<max_iterations:
-            valid_image_list, pairwise_distances=get_best_cluster_kmeans(image_list,n_clusters, min_cluster_size)
+            valid_image_list, pairwise_distances=cluster_function(image_list,
+                                                                  n_clusters, 
+                                                                  min_cluster_size,
+                                                                  cluster_text_prompt,
+                                                                  retain_fraction,
+                                                                  negative)
             print(f"iteration {iteration} pairwise distances {pairwise_distances} vs target {convergence_scale*init_dist}")
             if not random_text_prompt:
                 text_prompt_list=text_prompt_list*len(valid_image_list)
@@ -380,4 +409,4 @@ def train_and_evaluate(init_image_list: Image,
     seconds=end-start
     hours=seconds/3600
     print(f"{training_method} training elapsed {seconds} seconds == {hours} hours")
-    return evaluate_pipeline(init_image_list,text_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter)
+    return evaluate_pipeline(init_image_list,text_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter,negative_prompt, target_prompt)
