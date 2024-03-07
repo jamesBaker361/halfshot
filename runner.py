@@ -71,6 +71,7 @@ parser.add_argument("--suffix",type=str,help="suffix to append to base text prom
 parser.add_argument("--img_type",type=str,default="tile",help="whether to use splash or tile")
 parser.add_argument("--prior_loss_weight",type=float,default=0.5,help="weight for prior preservation")
 parser.add_argument("--dest_dataset",type=str,default="jlbaker361/test_chosen_runner",help="destination dataset to push results")
+parser.add_argument("--ip_adapter_weight_name",type=str,default="ip-adapter-plus-face_sd15.bin")
 
 def main(args):
     accelerator=Accelerator(log_with="wandb")
@@ -130,7 +131,8 @@ def main(args):
                 negative_prompt=args.negative_prompt,
                 target_prompt=args.target_prompt,
                 retain_fraction=args.retain_fraction,
-                chosen_one_args=chosen_one_args
+                ip_adapter_weight_name=args.ip_adapter_weight_name,
+                chosen_one_args=chosen_one_args,
             )
             for metric in metric_list:
                 src_dict[f"{training_method}_{metric}"].append(result_dict[metric])

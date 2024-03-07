@@ -201,7 +201,8 @@ def train_and_evaluate(init_image_list: list,
                         negative_prompt:str,
                         target_prompt:str,
                         retain_fraction:float,
-                        chosen_one_args:dict={}
+                        ip_adapter_weight_name:str,
+                        chosen_one_args:dict={},
                        )->dict:
     """
     init_image_list= the images we are starting with
@@ -274,7 +275,7 @@ def train_and_evaluate(init_image_list: list,
         #if trainable with ip-adapter well only be training the unet
         #this particular case well not actually use b/c training images=ip image
         use_ip_adapter=True
-        pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name="ip-adapter-plus-face_sd15.bin")
+        pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name=ip_adapter_weight_name)
         unet_target_modules= ["to_q", "to_v", "query", "value"]
         unet=prepare_unet(unet, unet_target_modules)
         images=[image]*5
@@ -304,7 +305,7 @@ def train_and_evaluate(init_image_list: list,
         cluster_function=get_best_cluster_kmeans
     elif training_method==CHOSEN_TEX_INV_IP:
         use_ip_adapter=True
-        pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name="ip-adapter-plus-face_sd15.bin")
+        pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name=ip_adapter_weight_name)
         tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder,initializer_token=prior_text_prompt)
         unet=prepare_unet(unet)
         text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
