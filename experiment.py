@@ -233,53 +233,48 @@ def train_and_evaluate(init_image_list: list,
     image=init_image_list[0]
     negative=True
     cluster_text_prompt=text_prompt
+    if training_method in [CHOSEN_NEG_IP,CHOSEN_TARGET_IP,IP, CHOSEN_TEX_INV_IP]:
+        use_ip_adapter=True
+        pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name=ip_adapter_weight_name)
+        ip_adapter_image=image
+    if training_method in [CHOSEN_TEX_INV_IP, CHOSEN_DB, CHOSEN_NEG, CHOSEN_NEG_IP, CHOSEN_TARGET, CHOSEN_TARGET_IP, CHOSEN_TEX_INV]:
+        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder,initializer_token=prior_text_prompt)
+        unet=prepare_unet(unet)
+        text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
+        random_text_prompt=True
+        use_chosen_one=True
+        entity_name=NEW_TOKEN
+        validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
+    if training_method in [CHOSEN_NEG_IP, CHOSEN_NEG, CHOSEN_TARGET, CHOSEN_TARGET_IP]:
+        chosen_one_args["n_generated_img"]=int(chosen_one_args["n_generated_img"]/retain_fraction)
+    if training_method in [DB,DB_MULTI]:
+        text_encoder_target_modules=["q_proj", "v_proj"]
+        text_encoder_config=LoraConfig(
+            r=8,
+            lora_alpha=32,
+            target_modules=text_encoder_target_modules,
+            lora_dropout=0.0
+        )
+        text_encoder=get_peft_model(text_encoder,text_encoder_config)
+        text_encoder.train()
+
+        unet_target_modules= ["to_q", "to_v", "query", "value"]
+        unet=prepare_unet(unet,unet_target_modules=unet_target_modules)
+        with_prior_preservation=True
+        prior_text_prompt_list=[prior_text_prompt]*len(prior_images)
+        text_prompt_list=[NEW_TOKEN+" "+ text_prompt]*len(prior_images)
+        entity_name=NEW_TOKEN+" "+text_prompt
+        validation_prompt_list=text_prompt_list
     if training_method==DB:
-        text_encoder_target_modules=["q_proj", "v_proj"]
-        text_encoder_config=LoraConfig(
-            r=8,
-            lora_alpha=32,
-            target_modules=text_encoder_target_modules,
-            lora_dropout=0.0
-        )
-        text_encoder=get_peft_model(text_encoder,text_encoder_config)
-        text_encoder.train()
-
-        unet_target_modules= ["to_q", "to_v", "query", "value"]
-        unet=prepare_unet(unet,unet_target_modules=unet_target_modules)
-        with_prior_preservation=True
-        prior_text_prompt_list=[prior_text_prompt]*len(prior_images)
         images=[image]*len(prior_images)
-        text_prompt_list=[NEW_TOKEN+" "+ text_prompt]*len(prior_images)
-        entity_name=NEW_TOKEN+" "+text_prompt
-        validation_prompt_list=text_prompt_list
     elif training_method==DB_MULTI: #this is just normal dreambooth with multiple images
-        text_encoder_target_modules=["q_proj", "v_proj"]
-        text_encoder_config=LoraConfig(
-            r=8,
-            lora_alpha=32,
-            target_modules=text_encoder_target_modules,
-            lora_dropout=0.0
-        )
-        text_encoder=get_peft_model(text_encoder,text_encoder_config)
-        text_encoder.train()
-
-        unet_target_modules= ["to_q", "to_v", "query", "value"]
-        unet=prepare_unet(unet,unet_target_modules=unet_target_modules)
-        with_prior_preservation=True
-        prior_text_prompt_list=[prior_text_prompt]*len(prior_images)
         images=init_image_list
-        text_prompt_list=[NEW_TOKEN+" "+ text_prompt]*len(prior_images)
-        validation_prompt_list=text_prompt_list
-        entity_name=NEW_TOKEN+" "+text_prompt
     elif training_method==IP:
         #if trainable with ip-adapter well only be training the unet
         #this particular case well not actually use b/c training images=ip image
-        use_ip_adapter=True
-        pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name=ip_adapter_weight_name)
         unet_target_modules= ["to_q", "to_v", "query", "value"]
         unet=prepare_unet(unet, unet_target_modules)
         images=[image]*5
-        ip_adapter_image=image
         text_prompt_list=[text_prompt]*5
         validation_prompt_list=text_prompt_list
     elif training_method==UNET:
@@ -295,50 +290,16 @@ def train_and_evaluate(init_image_list: list,
         random_text_prompt=True
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
     elif training_method==CHOSEN_TEX_INV: #this is what the OG chosen paper did
-        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder,initializer_token=prior_text_prompt)
-        unet=prepare_unet(unet)
-        text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
-        random_text_prompt=True
-        use_chosen_one=True
-        entity_name=NEW_TOKEN
-        validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
         cluster_function=get_best_cluster_kmeans
     elif training_method==CHOSEN_TEX_INV_IP:
-        use_ip_adapter=True
-        pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name=ip_adapter_weight_name)
-        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder,initializer_token=prior_text_prompt)
-        unet=prepare_unet(unet)
-        text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
-        random_text_prompt=True
-        use_chosen_one=True
-        entity_name=NEW_TOKEN
-        ip_adapter_image=image
-        use_ip_adapter=True
-        validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
         cluster_function=get_best_cluster_kmeans
     elif training_method ==CHOSEN_NEG:
-        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder,initializer_token=prior_text_prompt)
-        unet=prepare_unet(unet)
-        text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
-        random_text_prompt=True
-        use_chosen_one=True
-        entity_name=NEW_TOKEN
-        validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
         cluster_text_prompt=negative_prompt
         cluster_function=get_best_cluster_sorted
-        chosen_one_args["n_generated_img"]=int(chosen_one_args["n_generated_img"]/retain_fraction)
     elif training_method==CHOSEN_TARGET:
-        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder,initializer_token=prior_text_prompt)
-        unet=prepare_unet(unet)
-        text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
-        random_text_prompt=True
-        use_chosen_one=True
-        entity_name=NEW_TOKEN
-        validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
         cluster_text_prompt=target_prompt
         cluster_function=get_best_cluster_sorted
         negative=False
-        chosen_one_args["n_generated_img"]=int(chosen_one_args["n_generated_img"]/retain_fraction)
     for model in [vae,unet,text_encoder]:
         trainable_parameters+=[p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(
