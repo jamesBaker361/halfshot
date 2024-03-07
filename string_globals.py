@@ -14,6 +14,8 @@ CHOSEN_TEX_INV_IP="chosen_one_textual_inversion_ip"
 CHOSEN_DB="chosen_one_dreambooth"
 CHOSEN_NEG="chosen_one_negative_prompt"
 CHOSEN_TARGET="chosen_one_target_prompt"
+CHOSEN_NEG_IP="chosen_one_negative_prompt_ip_adapter"
+CHOSEN_TARGET_IP="chosen_one_target_prompt_ip_adapter"
 LOL_SUFFIX=" in the style of league of legends"
 NEGATIVE_PROMPT="blurry,text,low quality,logo,poorly drawn face,horror,mutation"
 
