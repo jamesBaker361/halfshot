@@ -293,10 +293,10 @@ def train_and_evaluate(init_image_list: list,
         cluster_function=get_best_cluster_kmeans
     elif training_method==CHOSEN_TEX_INV_IP:
         cluster_function=get_best_cluster_kmeans
-    elif training_method ==CHOSEN_NEG:
+    elif training_method  in [CHOSEN_NEG, CHOSEN_NEG_IP]:
         cluster_text_prompt=negative_prompt
         cluster_function=get_best_cluster_sorted
-    elif training_method==CHOSEN_TARGET:
+    elif training_method in [CHOSEN_TARGET, CHOSEN_TARGET_IP]:
         cluster_text_prompt=target_prompt
         cluster_function=get_best_cluster_sorted
         negative=False
