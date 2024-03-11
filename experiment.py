@@ -1,11 +1,13 @@
 
 import os
-cache_dir="/scratch/jlb638/trans_cache"
-os.environ["TRANSFORMERS_CACHE"]=cache_dir
-os.environ["HF_HOME"]=cache_dir
-os.environ["HF_HUB_CACHE"]=cache_dir
 import torch
-torch.hub.set_dir("/scratch/jlb638/torch_hub_cache")
+if "SLURM_JOB_ID" in os.environ:
+    cache_dir="/scratch/jlb638/trans_cache"
+    os.environ["TRANSFORMERS_CACHE"]=cache_dir
+    os.environ["HF_HOME"]=cache_dir
+    os.environ["HF_HUB_CACHE"]=cache_dir
+
+    torch.hub.set_dir("/scratch/jlb638/torch_hub_cache")
 from transformers import ViTImageProcessor, ViTModel
 from sklearn.cluster import KMeans
 from scipy.spatial.distance import cdist
