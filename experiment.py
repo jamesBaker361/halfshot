@@ -309,6 +309,10 @@ def train_and_evaluate(init_image_list: list,
         weight_decay=adam_weight_decay,
         eps=adam_epsilon,
     )
+    #try to reduce memory consumption
+    #pipeline.enable_vae_tiling()
+    #pipeline.enable_vae_slicing()
+    #pipeline.enable_model_cpu_offload()
     if not use_chosen_one:
         pipeline=loop(
             images=images,
