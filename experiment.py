@@ -218,7 +218,6 @@ def train_and_evaluate(init_image_list: list,
     start=time.time()
     pipeline=StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5")
     pipeline.safety_checker=None
-    pipeline("nothing",num_inference_steps=2,safety_checker=None) #if we dont do this the properties wont instantiate correctly???
     unet=pipeline.unet
     vae=pipeline.vae
     tokenizer=pipeline.tokenizer
@@ -226,6 +225,10 @@ def train_and_evaluate(init_image_list: list,
     for model in [vae,unet,text_encoder]:
         model.requires_grad_(False)
         #set everything to not be trainable by default
+    unet,text_encoder,vae,tokenizer = accelerator.prepare(
+        unet,text_encoder,vae,tokenizer
+    )
+    pipeline("nothing",num_inference_steps=2,safety_checker=None) #if we dont do this the properties wont instantiate correctly???
     trainable_parameters=[]
     with_prior_preservation=False
     prior_text_prompt_list=[]
