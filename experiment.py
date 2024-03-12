@@ -328,6 +328,12 @@ def train_and_evaluate(init_image_list: list,
     else:
         print("xformers is not available. Make sure it is installed correctly")
 
+    unet,text_encoder,vae,tokenizer = accelerator.prepare(
+        unet,text_encoder,vae,tokenizer
+    )
+    if use_ip_adapter:
+        image_encoder=accelerator.prepare(pipeline.image_encoder)
+
     if not use_chosen_one:
         pipeline=loop(
             images=images,
