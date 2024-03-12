@@ -144,7 +144,8 @@ def evaluate_pipeline(image:Image,
             vector_j=image_embed_list[j]
             identity_consistency_list.append(np.dot(vector_j,vector_i)/(norm(vector_i)*norm(vector_j)))
     
-    return {"pipeline":pipeline,"images":evaluation_image_list,
+    return {
+        #"pipeline":pipeline,"images":evaluation_image_list,
             "prompt_similarity":np.mean(prompt_similarity_list),
             "identity_consistency":np.mean(identity_consistency_list),
              "negative_prompt_similarity":np.mean(negative_prompt_similarity_list),
@@ -216,6 +217,12 @@ def train_and_evaluate(init_image_list: list,
     prior_images = images of prior text prompt
     """
     start=time.time()
+    try:
+        torch.cuda.empty_cache()
+        accelerator.free_memory()
+        print("cleared cache!?!?")
+    except:
+        print("did not clear cache")
     pipeline=StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5")
     pipeline.safety_checker=None
     unet=pipeline.unet

@@ -102,6 +102,7 @@ def main(args):
         splash=row["splash"]
         tile=row["tile"]
         label=row["label"]
+        src_dict["label"].append(label)
         text_prompt=row["caption"]+" "+args.suffix
         prior_image_list=[row["PRIOR_{}".format(f)] for f in range(5)]
         if args.img_type=="splash":
@@ -139,6 +140,7 @@ def main(args):
             for metric in metric_list:
                 src_dict[f"{training_method}_{metric}"].append(result_dict[metric])
             data.append([training_method,label]+[result_dict[metric] for metric in metric_list])
+            del result_dict
         print(src_dict)
         Dataset.from_dict(src_dict).push_to_hub(args.dest_dataset)
     accelerator.get_tracker("wandb").log({
