@@ -143,6 +143,7 @@ def main(args):
     accelerator.get_tracker("wandb").log({
         "result_table":wandb.Table(columns=columns,data=data)
         })
+    print(f"pushed to {args.dest_dataset}")
 
 
 if __name__=='__main__':
