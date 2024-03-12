@@ -20,6 +20,8 @@ LOL_SUFFIX=" in the style of league of legends"
 NEGATIVE_PROMPT="blurry,text,low quality,logo,poorly drawn face,horror,mutation"
 
 CHOSEN_SUITE="chosen_suite"
+LIGHT_SUITE="light_suite"
 training_method_suite_dict={
-    CHOSEN_SUITE:[CHOSEN_TARGET, CHOSEN_NEG, CHOSEN_TEX_INV]
+    CHOSEN_SUITE:[CHOSEN_TARGET, CHOSEN_NEG, CHOSEN_TEX_INV],
+    LIGHT_SUITE: [TEX_INV, UNET]
 }

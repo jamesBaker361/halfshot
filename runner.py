@@ -139,6 +139,7 @@ def main(args):
             for metric in metric_list:
                 src_dict[f"{training_method}_{metric}"].append(result_dict[metric])
             data.append([training_method,label]+[result_dict[metric] for metric in metric_list])
+        print(src_dict)
         Dataset.from_dict(src_dict).push_to_hub(args.dest_dataset)
     accelerator.get_tracker("wandb").log({
         "result_table":wandb.Table(columns=columns,data=data)
