@@ -372,9 +372,9 @@ def train_and_evaluate(init_image_list: list,
         target_cluster_size=chosen_one_args["target_cluster_size"] #aka dsize_c
         n_clusters=n_generated_img // target_cluster_size
         if use_ip_adapter:
-            image_list=pipeline(text_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=n_generated_img,safety_checker=None,ip_adapter_image=ip_adapter_image).images
+            image_list=[pipeline(text_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=1,safety_checker=None,ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_generated_img)]
         else:
-            image_list=pipeline(text_prompt,num_inference_steps=timesteps_per_image,safety_checker=None,num_images_per_prompt=n_generated_img).images
+            image_list=[pipeline(text_prompt,num_inference_steps=timesteps_per_image,safety_checker=None,num_images_per_prompt=1).images[0] for _ in range(n_generated_img)]
         last_hidden_states=get_hidden_states(image_list)
         init_dist=np.mean(cdist(last_hidden_states, last_hidden_states, 'euclidean'))
         pairwise_distances=init_dist
