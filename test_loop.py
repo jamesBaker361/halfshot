@@ -9,8 +9,12 @@ if "SLURM_JOB_ID" in os.environ:
 
     torch.hub.set_dir("/scratch/jlb638/torch_hub_cache")
     timesteps_per_image=2
+    n_generated_img=10
+    convergence_scale=0.95
 else:
     timesteps_per_image=30
+    n_generated_img=64
+    convergence_scale=0.5
 from adapter_training_loop import loop
 from PIL import Image
 from diffusers import AutoencoderKL, DDPMScheduler, DiffusionPipeline, StableDiffusionPipeline
@@ -43,6 +47,13 @@ target_prompt=LOL_SUFFIX
 negative_prompt=NEGATIVE_PROMPT
 retain_fraction=0.5
 ip_adapter_weight_name="ip-adapter-plus-face_sd15.bin"
+chosen_one_args={
+            "n_generated_img":n_generated_img,
+            "convergence_scale":convergence_scale,
+            "min_cluster_size":3,
+            "max_iterations":3,
+            "target_cluster_size":5
+        }
 
 
 class TestTraining(unittest.TestCase):
@@ -169,13 +180,6 @@ class TestTraining(unittest.TestCase):
         self.assertIsNotNone(result_dict)
 
     def test_textual_chosen(self):
-        chosen_one_args={
-            "n_generated_img":10,
-            "convergence_scale":0.95,
-            "min_cluster_size":3,
-            "max_iterations":3,
-            "target_cluster_size":5
-        }
         result_dict=train_and_evaluate(
             init_image_list=[image],
             text_prompt=text_prompt,
@@ -206,13 +210,6 @@ class TestTraining(unittest.TestCase):
         self.assertIsNotNone(result_dict)
 
     def test_textual_ip_chosen(self):
-        chosen_one_args={
-            "n_generated_img":10,
-            "convergence_scale":0.95,
-            "min_cluster_size":3,
-            "max_iterations":3,
-            "target_cluster_size":5
-        }
         result_dict=train_and_evaluate(
             init_image_list=[image],
             text_prompt=text_prompt,
@@ -244,13 +241,6 @@ class TestTraining(unittest.TestCase):
 
     def test_chosen_target(self):
         for training_method in  [CHOSEN_TARGET_IP, CHOSEN_TARGET]:
-            chosen_one_args={
-                "n_generated_img":10,
-                "convergence_scale":0.95,
-                "min_cluster_size":3,
-                "max_iterations":3,
-                "target_cluster_size":5
-            }
             result_dict=train_and_evaluate(
                 init_image_list=[image],
                 text_prompt=text_prompt,
@@ -282,13 +272,6 @@ class TestTraining(unittest.TestCase):
 
     def test_chosen_negative(self):
         for training_method in [CHOSEN_NEG_IP, CHOSEN_NEG]:
-            chosen_one_args={
-                "n_generated_img":10,
-                "convergence_scale":0.95,
-                "min_cluster_size":3,
-                "max_iterations":3,
-                "target_cluster_size":5
-            }
             result_dict=train_and_evaluate(
                 init_image_list=[image],
                 text_prompt=text_prompt,
