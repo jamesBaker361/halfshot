@@ -8,6 +8,9 @@ if "SLURM_JOB_ID" in os.environ:
     os.environ["HF_HUB_CACHE"]=cache_dir
 
     torch.hub.set_dir("/scratch/jlb638/torch_hub_cache")
+    timesteps_per_image=2
+else:
+    timesteps_per_image=30
 from adapter_training_loop import loop
 from PIL import Image
 from diffusers import AutoencoderKL, DDPMScheduler, DiffusionPipeline, StableDiffusionPipeline
@@ -28,7 +31,6 @@ adam_epsilon=1e-08
 max_grad_norm=1.0
 epochs=1
 seed=0
-timesteps_per_image=2
 size=256
 train_batch_size=1
 num_validation_images=1
