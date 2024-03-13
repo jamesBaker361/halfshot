@@ -192,7 +192,7 @@ def train_and_evaluate(ip_adapter_image:Image,
                        adam_beta2:float,
                        adam_weight_decay:float,
                        adam_epsilon:float,
-                       n_prior:int,
+                       n_image:int,
                        prior_loss_weight:float,
                        training_method:str,
                        epochs:int,
@@ -277,15 +277,15 @@ def train_and_evaluate(ip_adapter_image:Image,
         unet=prepare_unet(unet,unet_target_modules=unet_target_modules)
         with_prior_preservation=True
         prior_images=[
-            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None).images[0] for _ in range(n_prior)
+            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None).images[0] for _ in range(n_image)
         ]
-        prior_text_prompt_list=[text_prompt]*n_prior
-        text_prompt_list=[NEW_TOKEN+" "+ text_prompt]*n_prior
+        prior_text_prompt_list=[text_prompt]*n_image
+        text_prompt_list=[NEW_TOKEN+" "+ text_prompt]*n_image
         entity_name=NEW_TOKEN+" "+text_prompt
         validation_prompt_list=text_prompt_list
     if training_method in [DB_MULTI,TEX_INV, UNET,IP]:
         images=[
-            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=40).images[0] for _ in range(n_prior)
+            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=40).images[0] for _ in range(n_image)
         ]
     elif training_method==IP:
         #if trainable with ip-adapter well only be training the unet
