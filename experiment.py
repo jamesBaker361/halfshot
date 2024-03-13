@@ -100,7 +100,7 @@ def prepare_textual_inversion(text_prompt:str, tokenizer:object,text_encoder:obj
     text_encoder.get_input_embeddings().requires_grad_(True)
     return tokenizer,text_encoder
 
-def evaluate_pipeline(image:Image,
+def evaluate_pipeline(ip_adapter_image:Image,
                       text_prompt:str,
                       entity_name:str,
                       pipeline:StableDiffusionPipeline,
@@ -115,7 +115,7 @@ def evaluate_pipeline(image:Image,
         prompt=evaluation_prompt.format(entity_name)
         print(f"eval prompt {prompt}")
         if use_ip_adapter:
-            eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,ip_adapter_image=image,negative_prompt=negative_prompt).images[0]
+            eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,ip_adapter_image=ip_adapter_image,negative_prompt=negative_prompt).images[0]
         else:
             eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,negative_prompt=negative_prompt).images[0]
         evaluation_image_list.append(eval_image)
@@ -184,7 +184,7 @@ imagenet_template_list = [
 
 
 
-def train_and_evaluate(init_image_list: list,
+def train_and_evaluate(ip_adapter_image:Image,
                        text_prompt:str, 
                        accelerator:Accelerator,
                        learning_rate:float,
@@ -244,15 +244,16 @@ def train_and_evaluate(init_image_list: list,
     use_chosen_one=False
     random_text_prompt=False
     entity_name=text_prompt
-    image=init_image_list[0]
     negative=True
     cluster_text_prompt=text_prompt
+    prior_images=[]
+    images=[]
     if training_method in [CHOSEN_NEG_IP,CHOSEN_TARGET_IP,IP, CHOSEN_TEX_INV_IP]:
         use_ip_adapter=True
         pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name=ip_adapter_weight_name)
-        ip_adapter_image=image
+        ip_adapter_image=ip_adapter_image
     if training_method in [CHOSEN_TEX_INV_IP, CHOSEN_DB, CHOSEN_NEG, CHOSEN_NEG_IP, CHOSEN_TARGET, CHOSEN_TARGET_IP, CHOSEN_TEX_INV]:
-        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder,initializer_token=text_prompt)
+        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
         unet=prepare_unet(unet)
         text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
@@ -282,26 +283,24 @@ def train_and_evaluate(init_image_list: list,
         text_prompt_list=[NEW_TOKEN+" "+ text_prompt]*n_prior
         entity_name=NEW_TOKEN+" "+text_prompt
         validation_prompt_list=text_prompt_list
-    if training_method==DB:
-        images=[image]*n_prior
-    elif training_method==DB_MULTI: #this is just normal dreambooth with multiple images
-        images=init_image_list
+    if training_method in [DB_MULTI,TEX_INV, UNET,IP]:
+        images=[
+            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=40).images[0] for _ in range(n_prior)
+        ]
     elif training_method==IP:
         #if trainable with ip-adapter well only be training the unet
         #this particular case well not actually use b/c training images=ip image
         unet_target_modules= ["to_q", "to_v", "query", "value"]
         unet=prepare_unet(unet, unet_target_modules)
-        images=[image]*5
+        images=[ip_adapter_image]*5
         text_prompt_list=[text_prompt]*5
         validation_prompt_list=text_prompt_list
     elif training_method==UNET:
         unet=prepare_unet(unet)
-        images=init_image_list
         text_prompt_list=[text_prompt]*5
         validation_prompt_list=text_prompt_list
     elif training_method==TEX_INV:
         tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
-        images=init_image_list
         entity_name=NEW_TOKEN
         text_prompt_list=[imagenet_template.format(entity_name) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
@@ -432,4 +431,4 @@ def train_and_evaluate(init_image_list: list,
     seconds=end-start
     hours=seconds/3600
     print(f"{training_method} training elapsed {seconds} seconds == {hours} hours")
-    return evaluate_pipeline(init_image_list,text_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter,negative_prompt, target_prompt)
+    return evaluate_pipeline(ip_adapter_image,text_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter,negative_prompt, target_prompt)
