@@ -75,7 +75,8 @@ def prepare_unet(unet,unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"]):
     unet.train()
     return unet
 
-def prepare_textual_inversion(text_prompt:str, tokenizer:object,text_encoder,initializer_token:str):
+def prepare_textual_inversion(text_prompt:str, tokenizer:object,text_encoder:object):
+    initializer_token=""
     for token in [ "man "," woman "," boy "," girl "]:
         if text_prompt.find(token)!=-1:
             initializer_token=token
@@ -191,8 +192,7 @@ def train_and_evaluate(init_image_list: list,
                        adam_beta2:float,
                        adam_weight_decay:float,
                        adam_epsilon:float,
-                       prior_text_prompt:str,
-                       prior_images:list,
+                       n_prior:int,
                        prior_loss_weight:float,
                        training_method:str,
                        epochs:int,
@@ -252,7 +252,7 @@ def train_and_evaluate(init_image_list: list,
         pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name=ip_adapter_weight_name)
         ip_adapter_image=image
     if training_method in [CHOSEN_TEX_INV_IP, CHOSEN_DB, CHOSEN_NEG, CHOSEN_NEG_IP, CHOSEN_TARGET, CHOSEN_TARGET_IP, CHOSEN_TEX_INV]:
-        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder,initializer_token=prior_text_prompt)
+        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder,initializer_token=text_prompt)
         unet=prepare_unet(unet)
         text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
@@ -275,12 +275,15 @@ def train_and_evaluate(init_image_list: list,
         unet_target_modules= ["to_q", "to_v", "query", "value"]
         unet=prepare_unet(unet,unet_target_modules=unet_target_modules)
         with_prior_preservation=True
-        prior_text_prompt_list=[prior_text_prompt]*len(prior_images)
-        text_prompt_list=[NEW_TOKEN+" "+ text_prompt]*len(prior_images)
+        prior_images=[
+            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None).images[0] for _ in range(n_prior)
+        ]
+        prior_text_prompt_list=[text_prompt]*n_prior
+        text_prompt_list=[NEW_TOKEN+" "+ text_prompt]*n_prior
         entity_name=NEW_TOKEN+" "+text_prompt
         validation_prompt_list=text_prompt_list
     if training_method==DB:
-        images=[image]*len(prior_images)
+        images=[image]*n_prior
     elif training_method==DB_MULTI: #this is just normal dreambooth with multiple images
         images=init_image_list
     elif training_method==IP:
@@ -297,7 +300,7 @@ def train_and_evaluate(init_image_list: list,
         text_prompt_list=[text_prompt]*5
         validation_prompt_list=text_prompt_list
     elif training_method==TEX_INV:
-        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder,initializer_token=prior_text_prompt)
+        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
         images=init_image_list
         entity_name=NEW_TOKEN
         text_prompt_list=[imagenet_template.format(entity_name) for imagenet_template in imagenet_template_list]

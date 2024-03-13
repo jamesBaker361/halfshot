@@ -54,6 +54,7 @@ chosen_one_args={
             "max_iterations":3,
             "target_cluster_size":5
         }
+n_prior=4
 
 
 class TestTraining(unittest.TestCase):
@@ -72,8 +73,7 @@ class TestTraining(unittest.TestCase):
             adam_beta2=adam_beta2,
             adam_weight_decay=adam_weight_decay,
             adam_epsilon=adam_epsilon,
-            prior_text_prompt=prior_text_prompt,
-            prior_images=prior_images,
+            n_prior=n_prior,
             prior_loss_weight=prior_loss_weight,
             training_method="unet_lora",
             epochs=epochs,
@@ -102,8 +102,7 @@ class TestTraining(unittest.TestCase):
             adam_beta2=adam_beta2,
             adam_weight_decay=adam_weight_decay,
             adam_epsilon=adam_epsilon,
-            prior_text_prompt=prior_text_prompt,
-            prior_images=prior_images,
+            n_prior=n_prior,
             prior_loss_weight=prior_loss_weight,
             training_method="dreambooth",
             epochs=epochs,
@@ -131,8 +130,7 @@ class TestTraining(unittest.TestCase):
             adam_beta2=adam_beta2,
             adam_weight_decay=adam_weight_decay,
             adam_epsilon=adam_epsilon,
-            prior_text_prompt=prior_text_prompt,
-            prior_images=prior_images,
+            n_prior=n_prior,
             prior_loss_weight=prior_loss_weight,
             training_method="textual_inversion",
             epochs=epochs,
@@ -160,8 +158,7 @@ class TestTraining(unittest.TestCase):
             adam_beta2=adam_beta2,
             adam_weight_decay=adam_weight_decay,
             adam_epsilon=adam_epsilon,
-            prior_text_prompt=prior_text_prompt,
-            prior_images=prior_images,
+            n_prior=n_prior,
             prior_loss_weight=prior_loss_weight,
             training_method="ip_adapter",
             epochs=epochs,
@@ -189,8 +186,7 @@ class TestTraining(unittest.TestCase):
             adam_beta2=adam_beta2,
             adam_weight_decay=adam_weight_decay,
             adam_epsilon=adam_epsilon,
-            prior_text_prompt=prior_text_prompt,
-            prior_images=prior_images,
+            n_prior=n_prior,
             prior_loss_weight=prior_loss_weight,
             training_method="chosen_one_textual_inversion",
             epochs=epochs,
@@ -219,8 +215,7 @@ class TestTraining(unittest.TestCase):
             adam_beta2=adam_beta2,
             adam_weight_decay=adam_weight_decay,
             adam_epsilon=adam_epsilon,
-            prior_text_prompt=prior_text_prompt,
-            prior_images=prior_images,
+            n_prior=n_prior,
             prior_loss_weight=prior_loss_weight,
             training_method=CHOSEN_TEX_INV_IP,
             epochs=epochs,
