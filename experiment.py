@@ -144,7 +144,6 @@ def evaluate_pipeline(ip_adapter_image:Image,
         for j in range(i+1, len(image_embed_list)):
             vector_j=image_embed_list[j]
             identity_consistency_list.append(np.dot(vector_j,vector_i)/(norm(vector_i)*norm(vector_j)))
-    
     return {
         #"pipeline":pipeline,"images":evaluation_image_list,
             "prompt_similarity":np.mean(prompt_similarity_list),
@@ -216,6 +215,7 @@ def train_and_evaluate(ip_adapter_image:Image,
     prior_text_prompt= for dreambooth this is the prior, (should be Man, woman, boy, girl or person)
     prior_images = images of prior text prompt
     """
+    print(f"training method {training_method}")
     start=time.time()
     try:
         torch.cuda.empty_cache()
@@ -432,8 +432,18 @@ def train_and_evaluate(ip_adapter_image:Image,
             else:
                 image_list=[pipeline(entity_name,num_inference_steps=timesteps_per_image,safety_checker=None,num_images_per_prompt=1).images[0] for _ in range(n_generated_img) ]
             iteration+=1
+        del image_list
+        del valid_image_list
     end=time.time()
     seconds=end-start
     hours=seconds/3600
     print(f"{training_method} training elapsed {seconds} seconds == {hours} hours")
-    return evaluate_pipeline(ip_adapter_image,text_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter,negative_prompt, target_prompt)
+    metrics= evaluate_pipeline(ip_adapter_image,text_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter,negative_prompt, target_prompt)
+    try:
+        torch.cuda.empty_cache()
+        accelerator.free_memory()
+        print("cleared cache after eval!?!?")
+    except:
+        print("did not clear cache after eval")
+    del pipeline, images,unet,vae,text_encoder,optimizer
+    return metrics
