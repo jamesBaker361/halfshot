@@ -346,16 +346,6 @@ def train_and_evaluate(ip_adapter_image:Image,
     #pipeline.enable_vae_slicing()
     #pipeline.enable_model_cpu_offload()
 
-    if is_xformers_available() and use_ip_adapter==False:
-        import xformers
-
-        xformers_version = version.parse(xformers.__version__)
-        if xformers_version == version.parse("0.0.16"):
-            print("xFormers 0.0.16 cannot be used for training in some GPUs. If you observe problems during training, please update xFormers to at least 0.0.17. See https://huggingface.co/docs/diffusers/main/en/optimization/xformers for more details.")
-        pipeline.enable_xformers_memory_efficient_attention()
-    else:
-        print("xformers is not available. Make sure it is installed correctly")
-
     unet,text_encoder,vae,tokenizer = accelerator.prepare(
         unet,text_encoder,vae,tokenizer
     )
