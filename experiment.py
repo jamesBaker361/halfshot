@@ -240,18 +240,20 @@ def train_and_evaluate(ip_adapter_image:Image,
     with_prior_preservation=False
     prior_text_prompt_list=[]
     use_ip_adapter=False
-    ip_adapter_image=None
     use_chosen_one=False
     random_text_prompt=False
     entity_name=text_prompt
     negative=True
     cluster_text_prompt=text_prompt
     prior_images=[]
+    prior_text_prompt_list=[text_prompt]*n_image
     images=[]
-    if training_method in [CHOSEN_NEG_IP,CHOSEN_TARGET_IP,IP, CHOSEN_TEX_INV_IP]:
+    if training_method in [CHOSEN_NEG_IP,CHOSEN_TARGET_IP,IP, CHOSEN_TEX_INV_IP,DB_MULTI_IP, TEX_INV_IP,UNET_IP]:
         use_ip_adapter=True
         pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name=ip_adapter_weight_name)
-        ip_adapter_image=ip_adapter_image
+        images=[
+            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=2, ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_image)
+        ]
     if training_method in [CHOSEN_TEX_INV_IP, CHOSEN_DB, CHOSEN_NEG, CHOSEN_NEG_IP, CHOSEN_TARGET, CHOSEN_TARGET_IP, CHOSEN_TEX_INV]:
         tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
         unet=prepare_unet(unet)
@@ -260,9 +262,8 @@ def train_and_evaluate(ip_adapter_image:Image,
         use_chosen_one=True
         entity_name=NEW_TOKEN
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
-    if training_method in [CHOSEN_NEG_IP, CHOSEN_NEG, CHOSEN_TARGET, CHOSEN_TARGET_IP]:
         chosen_one_args["n_generated_img"]=int(chosen_one_args["n_generated_img"]/retain_fraction)
-    if training_method in [DB,DB_MULTI]:
+    if training_method in [DB,DB_MULTI,DB_MULTI_IP]:
         text_encoder_target_modules=["q_proj", "v_proj"]
         text_encoder_config=LoraConfig(
             r=8,
@@ -276,43 +277,45 @@ def train_and_evaluate(ip_adapter_image:Image,
         unet_target_modules= ["to_q", "to_v", "query", "value"]
         unet=prepare_unet(unet,unet_target_modules=unet_target_modules)
         with_prior_preservation=True
-        prior_images=[
-            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None).images[0] for _ in range(n_image)
-        ]
-        prior_text_prompt_list=[text_prompt]*n_image
         text_prompt_list=[NEW_TOKEN+" "+ text_prompt]*n_image
         entity_name=NEW_TOKEN+" "+text_prompt
         validation_prompt_list=text_prompt_list
-    if training_method in [DB_MULTI,TEX_INV, UNET,IP]:
-        images=[
-            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=40).images[0] for _ in range(n_image)
+    if training_method in [DB,DB_MULTI]:
+        prior_images=[
+            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None, num_inference_steps=2).images[0] for _ in range(n_image)
         ]
-    elif training_method==IP:
+    if training_method in [DB_MULTI_IP]:
+        prior_images=[
+            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None,ip_adapter_image=ip_adapter_image, num_inference_steps=2).images[0] for _ in range(n_image)
+        ]
+    if training_method in [DB_MULTI,TEX_INV, UNET]:
+        images=[
+            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=2).images[0] for _ in range(n_image)
+        ]
+    if training_method==IP:
         #if trainable with ip-adapter well only be training the unet
         #this particular case well not actually use b/c training images=ip image
         unet_target_modules= ["to_q", "to_v", "query", "value"]
         unet=prepare_unet(unet, unet_target_modules)
-        images=[ip_adapter_image]*5
-        text_prompt_list=[text_prompt]*5
+        images=[ip_adapter_image]*n_image
+        text_prompt_list=[text_prompt]*n_image
         validation_prompt_list=text_prompt_list
-    elif training_method==UNET:
+    if training_method in [UNET, UNET_IP]:
         unet=prepare_unet(unet)
-        text_prompt_list=[text_prompt]*5
+        text_prompt_list=[text_prompt]*n_image
         validation_prompt_list=text_prompt_list
-    elif training_method==TEX_INV:
+    if training_method in [TEX_INV,TEX_INV_IP,CHOSEN_TEX_INV_IP, CHOSEN_TEX_INV]:
         tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
         entity_name=NEW_TOKEN
         text_prompt_list=[imagenet_template.format(entity_name) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
-    elif training_method==CHOSEN_TEX_INV: #this is what the OG chosen paper did
+    if training_method in [CHOSEN_TEX_INV,CHOSEN_TEX_INV_IP,CHOSEN_DB]: #this is what the OG chosen paper did
         cluster_function=get_best_cluster_kmeans
-    elif training_method==CHOSEN_TEX_INV_IP:
-        cluster_function=get_best_cluster_kmeans
-    elif training_method  in [CHOSEN_NEG, CHOSEN_NEG_IP]:
+    if training_method  in [CHOSEN_NEG, CHOSEN_NEG_IP]:
         cluster_text_prompt=negative_prompt
         cluster_function=get_best_cluster_sorted
-    elif training_method in [CHOSEN_TARGET, CHOSEN_TARGET_IP]:
+    if training_method in [CHOSEN_TARGET, CHOSEN_TARGET_IP]:
         cluster_text_prompt=target_prompt
         cluster_function=get_best_cluster_sorted
         negative=False
@@ -330,13 +333,13 @@ def train_and_evaluate(ip_adapter_image:Image,
     #pipeline.enable_vae_slicing()
     #pipeline.enable_model_cpu_offload()
 
-    if is_xformers_available():
+    if is_xformers_available() and use_ip_adapter==False:
         import xformers
 
         xformers_version = version.parse(xformers.__version__)
         if xformers_version == version.parse("0.0.16"):
             print("xFormers 0.0.16 cannot be used for training in some GPUs. If you observe problems during training, please update xFormers to at least 0.0.17. See https://huggingface.co/docs/diffusers/main/en/optimization/xformers for more details.")
-        unet.enable_xformers_memory_efficient_attention()
+        pipeline.enable_xformers_memory_efficient_attention()
     else:
         print("xformers is not available. Make sure it is installed correctly")
 
@@ -381,9 +384,11 @@ def train_and_evaluate(ip_adapter_image:Image,
         target_cluster_size=chosen_one_args["target_cluster_size"] #aka dsize_c
         n_clusters=n_generated_img // target_cluster_size
         if use_ip_adapter:
-            image_list=[pipeline(text_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=1,safety_checker=None,ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_generated_img)]
+            image_list=[
+                pipeline(text_prompt,negative_prompt=negative_prompt,num_inference_steps=timesteps_per_image,safety_checker=None,ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_generated_img)]
         else:
-            image_list=[pipeline(text_prompt,num_inference_steps=timesteps_per_image,safety_checker=None,num_images_per_prompt=1).images[0] for _ in range(n_generated_img)]
+            image_list=[
+                pipeline(text_prompt,negative_prompt=negative_prompt,num_inference_steps=timesteps_per_image,safety_checker=None).images[0] for _ in range(n_generated_img)]
         last_hidden_states=get_hidden_states(image_list)
         init_dist=np.mean(cdist(last_hidden_states, last_hidden_states, 'euclidean'))
         pairwise_distances=init_dist
