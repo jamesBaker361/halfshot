@@ -25,7 +25,7 @@ from string_globals import *
 import unittest
 import wandb
 
-image=Image.open("file.jpg")
+ip_adapter_image=Image.open("file.jpg")
 text_prompt="a blonde woman"
 learning_rate=1e-4
 adam_beta1=0.9
@@ -55,7 +55,7 @@ chosen_one_args={
             "target_cluster_size":5
         }
 n_prior=4
-
+n_image=5
 
 class TestTraining(unittest.TestCase):
     def setUp(self):
@@ -63,238 +63,49 @@ class TestTraining(unittest.TestCase):
         self.accelerator.init_trackers(project_name="test")
         wandb.define_metric("custom_step")
 
-    def test_unet_lora(self):
-        result_dict=train_and_evaluate(
-            init_image_list=[image],
-            text_prompt=text_prompt,
-            accelerator=self.accelerator,
-            learning_rate=learning_rate,
-            adam_beta1=adam_beta1,
-            adam_beta2=adam_beta2,
-            adam_weight_decay=adam_weight_decay,
-            adam_epsilon=adam_epsilon,
-            n_prior=n_prior,
-            prior_loss_weight=prior_loss_weight,
-            training_method="unet_lora",
-            epochs=epochs,
-            seed=seed,
-            timesteps_per_image=timesteps_per_image,
-            size=size,
-            train_batch_size=train_batch_size,
-            num_validation_images=num_validation_images,
-            noise_offset=noise_offset,
-            max_grad_norm=max_grad_norm,
-            negative_prompt=negative_prompt,
-            target_prompt=target_prompt,
-            ip_adapter_weight_name=ip_adapter_weight_name,
-            retain_fraction=retain_fraction
-        )
-        self.assertIsNotNone(result_dict)
-
-    def test_dreambooth(self):
-        prior_images=[image]*4
-        result_dict=train_and_evaluate(
-            init_image_list=[image],
-            text_prompt=text_prompt,
-            accelerator=self.accelerator,
-            learning_rate=learning_rate,
-            adam_beta1=adam_beta1,
-            adam_beta2=adam_beta2,
-            adam_weight_decay=adam_weight_decay,
-            adam_epsilon=adam_epsilon,
-            n_prior=n_prior,
-            prior_loss_weight=prior_loss_weight,
-            training_method="dreambooth",
-            epochs=epochs,
-            seed=seed,
-            timesteps_per_image=timesteps_per_image,
-            size=size,
-            train_batch_size=train_batch_size,
-            num_validation_images=num_validation_images,
-            noise_offset=noise_offset,
-            max_grad_norm=max_grad_norm,
-            negative_prompt=negative_prompt,
-            target_prompt=target_prompt,
-            retain_fraction=retain_fraction,
-            ip_adapter_weight_name=ip_adapter_weight_name
-        )
-        self.assertIsNotNone(result_dict)
-
-    def test_textual_inversion(self):
-        result_dict=train_and_evaluate(
-            init_image_list=[image],
-            text_prompt=text_prompt,
-            accelerator=self.accelerator,
-            learning_rate=learning_rate,
-            adam_beta1=adam_beta1,
-            adam_beta2=adam_beta2,
-            adam_weight_decay=adam_weight_decay,
-            adam_epsilon=adam_epsilon,
-            n_prior=n_prior,
-            prior_loss_weight=prior_loss_weight,
-            training_method="textual_inversion",
-            epochs=epochs,
-            seed=seed,
-            timesteps_per_image=timesteps_per_image,
-            size=size,
-            train_batch_size=train_batch_size,
-            num_validation_images=num_validation_images,
-            noise_offset=noise_offset,
-            max_grad_norm=max_grad_norm,
-            negative_prompt=negative_prompt,
-            target_prompt=target_prompt,
-            ip_adapter_weight_name=ip_adapter_weight_name,
-            retain_fraction=retain_fraction
-        )
-        self.assertIsNotNone(result_dict)
-
-    def test_ip_adapter(self):
-        result_dict=train_and_evaluate(
-            init_image_list=[image],
-            text_prompt=text_prompt,
-            accelerator=self.accelerator,
-            learning_rate=learning_rate,
-            adam_beta1=adam_beta1,
-            adam_beta2=adam_beta2,
-            adam_weight_decay=adam_weight_decay,
-            adam_epsilon=adam_epsilon,
-            n_prior=n_prior,
-            prior_loss_weight=prior_loss_weight,
-            training_method="ip_adapter",
-            epochs=epochs,
-            seed=seed,
-            timesteps_per_image=timesteps_per_image,
-            size=size,
-            train_batch_size=train_batch_size,
-            num_validation_images=num_validation_images,
-            noise_offset=noise_offset,
-            max_grad_norm=max_grad_norm,
-            negative_prompt=negative_prompt,
-            target_prompt=target_prompt,
-            ip_adapter_weight_name=ip_adapter_weight_name,
-            retain_fraction=retain_fraction
-        )
-        self.assertIsNotNone(result_dict)
-
-    def test_textual_chosen(self):
-        result_dict=train_and_evaluate(
-            init_image_list=[image],
-            text_prompt=text_prompt,
-            accelerator=self.accelerator,
-            learning_rate=learning_rate,
-            adam_beta1=adam_beta1,
-            adam_beta2=adam_beta2,
-            adam_weight_decay=adam_weight_decay,
-            adam_epsilon=adam_epsilon,
-            n_prior=n_prior,
-            prior_loss_weight=prior_loss_weight,
-            training_method="chosen_one_textual_inversion",
-            epochs=epochs,
-            seed=seed,
-            timesteps_per_image=timesteps_per_image,
-            size=size,
-            train_batch_size=train_batch_size,
-            num_validation_images=num_validation_images,
-            noise_offset=noise_offset,
-            max_grad_norm=max_grad_norm,
-            chosen_one_args=chosen_one_args,
-            negative_prompt=negative_prompt,
-            target_prompt=target_prompt,
-            ip_adapter_weight_name=ip_adapter_weight_name,
-            retain_fraction=retain_fraction
-        )
-        self.assertIsNotNone(result_dict)
-
-    def test_textual_ip_chosen(self):
-        result_dict=train_and_evaluate(
-            init_image_list=[image],
-            text_prompt=text_prompt,
-            accelerator=self.accelerator,
-            learning_rate=learning_rate,
-            adam_beta1=adam_beta1,
-            adam_beta2=adam_beta2,
-            adam_weight_decay=adam_weight_decay,
-            adam_epsilon=adam_epsilon,
-            n_prior=n_prior,
-            prior_loss_weight=prior_loss_weight,
-            training_method=CHOSEN_TEX_INV_IP,
-            epochs=epochs,
-            seed=seed,
-            timesteps_per_image=timesteps_per_image,
-            size=size,
-            train_batch_size=train_batch_size,
-            num_validation_images=num_validation_images,
-            noise_offset=noise_offset,
-            max_grad_norm=max_grad_norm,
-            chosen_one_args=chosen_one_args,
-            negative_prompt=negative_prompt,
-            target_prompt=target_prompt,
-            ip_adapter_weight_name=ip_adapter_weight_name,
-            retain_fraction=retain_fraction
-        )
-        self.assertIsNotNone(result_dict)
-
-    def test_chosen_target(self):
-        for training_method in  [CHOSEN_TARGET_IP, CHOSEN_TARGET]:
-            result_dict=train_and_evaluate(
-                init_image_list=[image],
-                text_prompt=text_prompt,
-                accelerator=self.accelerator,
-                learning_rate=learning_rate,
-                adam_beta1=adam_beta1,
-                adam_beta2=adam_beta2,
-                adam_weight_decay=adam_weight_decay,
-                adam_epsilon=adam_epsilon,
-                prior_text_prompt=prior_text_prompt,
-                prior_images=prior_images,
-                prior_loss_weight=prior_loss_weight,
-                training_method=training_method,
-                epochs=epochs,
-                seed=seed,
-                timesteps_per_image=timesteps_per_image,
-                size=size,
-                train_batch_size=train_batch_size,
-                num_validation_images=num_validation_images,
-                noise_offset=noise_offset,
-                max_grad_norm=max_grad_norm,
-                chosen_one_args=chosen_one_args,
-                negative_prompt=negative_prompt,
-                target_prompt=target_prompt,
-                ip_adapter_weight_name=ip_adapter_weight_name,
-                retain_fraction=retain_fraction
-            )
-            self.assertIsNotNone(result_dict)
-
-    def test_chosen_negative(self):
-        for training_method in [CHOSEN_NEG_IP, CHOSEN_NEG]:
-            result_dict=train_and_evaluate(
-                init_image_list=[image],
-                text_prompt=text_prompt,
-                accelerator=self.accelerator,
-                learning_rate=learning_rate,
-                adam_beta1=adam_beta1,
-                adam_beta2=adam_beta2,
-                adam_weight_decay=adam_weight_decay,
-                adam_epsilon=adam_epsilon,
-                prior_text_prompt=prior_text_prompt,
-                prior_images=prior_images,
-                prior_loss_weight=prior_loss_weight,
-                training_method=training_method,
-                epochs=epochs,
-                seed=seed,
-                timesteps_per_image=timesteps_per_image,
-                size=size,
-                train_batch_size=train_batch_size,
-                num_validation_images=num_validation_images,
-                noise_offset=noise_offset,
-                max_grad_norm=max_grad_norm,
-                chosen_one_args=chosen_one_args,
-                negative_prompt=negative_prompt,
-                target_prompt=target_prompt,
-                ip_adapter_weight_name=ip_adapter_weight_name,
-                retain_fraction=retain_fraction
-            )
-            self.assertIsNotNone(result_dict)
+    def test_all(self):
+        for training_method in [
+            UNET,
+            DB_MULTI,
+            TEX_INV,
+            UNET_IP,
+            DB_MULTI_IP,
+            TEX_INV_IP,
+            CHOSEN_NEG_IP,
+            CHOSEN_TARGET,
+            CHOSEN_TARGET_IP,
+            CHOSEN_TEX_INV,
+            CHOSEN_TEX_INV_IP
+        ]:
+            with self.subTest(training_method=training_method):
+                print(f"testing {training_method}")
+                result_dict=train_and_evaluate(
+                    ip_adapter_image=ip_adapter_image,
+                    text_prompt=text_prompt,
+                    accelerator=self.accelerator,
+                    learning_rate=learning_rate,
+                    adam_beta1=adam_beta1,
+                    adam_beta2=adam_beta2,
+                    adam_weight_decay=adam_weight_decay,
+                    adam_epsilon=adam_epsilon,
+                    n_image=n_image,
+                    prior_loss_weight=prior_loss_weight,
+                    training_method=training_method,
+                    epochs=epochs,
+                    seed=seed,
+                    timesteps_per_image=timesteps_per_image,
+                    size=size,
+                    train_batch_size=train_batch_size,
+                    num_validation_images=num_validation_images,
+                    noise_offset=noise_offset,
+                    max_grad_norm=max_grad_norm,
+                    chosen_one_args=chosen_one_args,
+                    negative_prompt=negative_prompt,
+                    target_prompt=target_prompt,
+                    ip_adapter_weight_name=ip_adapter_weight_name,
+                    retain_fraction=retain_fraction
+                )
+                self.assertIsNotNone(result_dict)
 
 if __name__=='__main__':
     for slurm_var in ["SLURMD_NODENAME","SBATCH_CLUSTERS", 
