@@ -74,6 +74,7 @@ parser.add_argument("--img_type",type=str,default="tile",help="whether to use sp
 parser.add_argument("--prior_loss_weight",type=float,default=0.5,help="weight for prior preservation")
 parser.add_argument("--dest_dataset",type=str,default="jlbaker361/test_chosen_runner",help="destination dataset to push results")
 parser.add_argument("--ip_adapter_weight_name",type=str,default="ip-adapter-plus-face_sd15.bin")
+parser.add_argument("--n_prior",type=int,default=5)
 
 def main(args):
     accelerator=Accelerator(log_with="wandb")
@@ -106,12 +107,12 @@ def main(args):
         text_prompt=row["caption"]+" "+args.suffix
         prior_image_list=[row["PRIOR_{}".format(f)] for f in range(5)]
         if args.img_type=="splash":
-            init_image_list=[splash for _ in range(5)]
+            ip_adapter_image=splash
         elif args.img_type=="tile":
-            init_image_list=[tile for _ in range(5)]
+            ip_adapter_image=tile
         for training_method in training_method_list:
             result_dict=train_and_evaluate(
-                init_image_list=init_image_list,
+                ip_adapter_image=ip_adapter_image,
                 text_prompt=text_prompt,
                 accelerator=accelerator,
                 learning_rate=args.learning_rate,
@@ -119,11 +120,10 @@ def main(args):
                 adam_beta2=args.adam_beta2,
                 adam_weight_decay=args.adam_weight_decay,
                 adam_epsilon=args.adam_epsilon,
-                prior_text_prompt=text_prompt,
-                prior_images=prior_image_list,
-                prior_loss_weight=args.prior_loss_weight,
+                n_image=args.n_prior,
                 training_method=training_method,
                 epochs=args.epochs,
+                prior_loss_weight=args.prior_loss_weight,
                 seed=args.seed,
                 timesteps_per_image=args.timesteps_per_image,
                 size=args.size,
