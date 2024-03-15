@@ -352,6 +352,8 @@ def train_and_evaluate(ip_adapter_image:Image,
     if use_ip_adapter:
         image_encoder=accelerator.prepare(pipeline.image_encoder)
 
+    print(f"acceleerate device {accelerator.device}")
+
     if not use_chosen_one:
         pipeline=loop(
             images=images,

@@ -15,9 +15,12 @@ import numpy as np
 
 #remove backgrounds and use faces?
 
+vit_processor = ViTImageProcessor.from_pretrained('facebook/dino-vitb16')
+vit_model = ViTModel.from_pretrained('facebook/dino-vitb16')
+clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+
 def get_hidden_states(image_list:list):
-    vit_processor = ViTImageProcessor.from_pretrained('facebook/dino-vitb16')
-    vit_model = ViTModel.from_pretrained('facebook/dino-vitb16')
     vit_inputs = vit_processor(images=image_list, return_tensors="pt")
     vit_outputs=vit_model(**vit_inputs)
     last_hidden_states = vit_outputs.last_hidden_state.detach().numpy().reshape(len(image_list),-1)
@@ -54,8 +57,6 @@ def get_best_cluster_kmeans(
     return valid_image_list, dist_dict[min_label]
 
 def get_ranked_images_list(image_list:list, text_prompt:str)->list:
-    clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-    clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
     clip_inputs=clip_processor(text=[text_prompt], images=image_list, return_tensors="pt", padding=True)
     clip_outputs = clip_model(**clip_inputs)
     logits_per_image=clip_outputs.logits_per_image.detach().numpy()[0]
