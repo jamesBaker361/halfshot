@@ -26,6 +26,7 @@ from clustering import get_hidden_states,get_best_cluster_kmeans,get_best_cluste
 import time
 from diffusers.utils.import_utils import is_xformers_available
 from packaging import version
+import gc
 
 def get_trained_pipeline(
         pipeline:StableDiffusionPipeline,
@@ -233,6 +234,7 @@ def train_and_evaluate(ip_adapter_image:Image,
     try:
         torch.cuda.empty_cache()
         accelerator.free_memory()
+        gc.collect()
         print("cleared cache!?!?")
     except:
         print("did not clear cache")
