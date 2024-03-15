@@ -395,11 +395,13 @@ def train_and_evaluate(ip_adapter_image:Image,
         else:
             image_list=[
                 pipeline(text_prompt,negative_prompt=negative_prompt,num_inference_steps=timesteps_per_image,safety_checker=None).images[0] for _ in range(n_generated_img)]
+        print("generated initial sets of images")
         last_hidden_states=get_hidden_states(image_list)
         init_dist=np.mean(cdist(last_hidden_states, last_hidden_states, 'euclidean'))
         pairwise_distances=init_dist
         iteration=0
         while pairwise_distances>=convergence_scale*init_dist and iteration<max_iterations:
+            print("while loop")
             valid_image_list, pairwise_distances=cluster_function(image_list,
                                                                   n_clusters, 
                                                                   min_cluster_size,
