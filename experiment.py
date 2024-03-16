@@ -26,6 +26,7 @@ from clustering import get_hidden_states,get_best_cluster_kmeans,get_best_cluste
 import time
 from diffusers.utils.import_utils import is_xformers_available
 from packaging import version
+from safetensors import safe_open
 import gc
 
 def get_trained_pipeline(
@@ -74,6 +75,27 @@ def prepare_unet(unet,unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"]):
         bias="none")
     unet = get_peft_model(unet, config)
     unet.train()
+    return unet
+
+def prepare_unet_from_path(unet,weight_path:str,trainable_modules:list):
+    unet=prepare_unet(unet)
+    state_dict={}
+    with safe_open(weight_path, framework="pt", device="cpu") as f:
+        for key in f.keys():
+            state_dict[key]=f.get_tensor(key)
+    state_dict={
+        "base_model.model."+k.replace("weight","default.weight"):v for k,v in state_dict.items()
+    }
+    count=0
+    unet.load_state_dict(state_dict,strict=False)
+    for (name,param) in unet.named_parameters():
+        if name in state_dict:
+            count+=1
+        param.requires_grad_(False)
+        for module_name in trainable_modules:
+            if name.find(module_name)!=-1 and name.find("default.weight")!=-1:
+                param.requires_grad_(True)
+    print(f"loaded {count} parameters")
     return unet
 
 def prepare_textual_inversion(text_prompt:str, tokenizer:object,text_encoder:object):
