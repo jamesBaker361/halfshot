@@ -75,6 +75,7 @@ parser.add_argument("--prior_loss_weight",type=float,default=0.5,help="weight fo
 parser.add_argument("--dest_dataset",type=str,default="jlbaker361/test_chosen_runner",help="destination dataset to push results")
 parser.add_argument("--ip_adapter_weight_name",type=str,default="ip-adapter-plus-face_sd15.bin")
 parser.add_argument("--n_prior",type=int,default=5)
+parser.add_argument("--pretrained_lora_path",type=str,default="jlbaker361/test-ddpo-b")
 
 def main(args):
     accelerator=Accelerator(log_with="wandb")
@@ -136,6 +137,7 @@ def main(args):
                 retain_fraction=args.retain_fraction,
                 ip_adapter_weight_name=args.ip_adapter_weight_name,
                 chosen_one_args=chosen_one_args,
+                pretrained_lora_path=args.pretrained_lora_path
             )
             for metric in metric_list:
                 src_dict[f"{training_method}_{metric}"].append(result_dict[metric])

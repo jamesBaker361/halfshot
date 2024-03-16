@@ -220,7 +220,8 @@ def train_and_evaluate(ip_adapter_image:Image,
                         target_prompt:str,
                         retain_fraction:float,
                         ip_adapter_weight_name:str,
-                        chosen_one_args:dict={},
+                        chosen_one_args:dict,
+                        pretrained_lora_path:str
                        )->dict:
     """
     init_image_list= the images we are starting with
@@ -399,7 +400,9 @@ def train_and_evaluate(ip_adapter_image:Image,
                 pipeline(text_prompt,negative_prompt=negative_prompt,num_inference_steps=timesteps_per_image,safety_checker=None).images[0] for _ in range(n_generated_img)]
         print("generated initial sets of images")
         last_hidden_states=get_hidden_states(image_list)
+        print("last hidden staes")
         init_dist=np.mean(cdist(last_hidden_states, last_hidden_states, 'euclidean'))
+        print("init_dist")
         pairwise_distances=init_dist
         iteration=0
         while pairwise_distances>=convergence_scale*init_dist and iteration<max_iterations:

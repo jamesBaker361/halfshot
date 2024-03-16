@@ -56,6 +56,7 @@ chosen_one_args={
         }
 n_prior=4
 n_image=5
+pretrained_lora_path="jlbaker361/test-ddpo-b"
 
 class TestTraining(unittest.TestCase):
     def setUp(self):
@@ -103,7 +104,8 @@ class TestTraining(unittest.TestCase):
                     negative_prompt=negative_prompt,
                     target_prompt=target_prompt,
                     ip_adapter_weight_name=ip_adapter_weight_name,
-                    retain_fraction=retain_fraction
+                    retain_fraction=retain_fraction,
+                    pretrained_lora_path=pretrained_lora_path
                 )
                 self.assertIsNotNone(result_dict)
 
