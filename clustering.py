@@ -20,6 +20,17 @@ vit_model = ViTModel.from_pretrained('facebook/dino-vitb16')
 clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
 clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
+def get_init_dist(last_hidden_states)->float:
+    n=len(last_hidden_states)
+    total=(n*(n+1)/2)-n
+    init_dist=0.0
+    for i in range(n):
+        for j in range(i+1,n):
+            init_dist+= np.linalg.norm(last_hidden_states[i] - last_hidden_states[j])/total
+    return init_dist
+
+    
+
 def get_hidden_states(image_list:list):
     vit_inputs = vit_processor(images=image_list, return_tensors="pt")
     vit_outputs=vit_model(**vit_inputs)
