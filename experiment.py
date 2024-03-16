@@ -22,7 +22,7 @@ from string_globals import *
 from transformers import CLIPProcessor, CLIPModel
 import numpy as np
 from numpy.linalg import norm
-from clustering import get_hidden_states,get_best_cluster_kmeans,get_best_cluster_sorted
+from clustering import get_hidden_states,get_best_cluster_kmeans,get_best_cluster_sorted,get_init_dist
 import time
 from diffusers.utils.import_utils import is_xformers_available
 from packaging import version
@@ -401,7 +401,7 @@ def train_and_evaluate(ip_adapter_image:Image,
         print("generated initial sets of images")
         last_hidden_states=get_hidden_states(image_list)
         print("last hidden staes")
-        init_dist=np.mean(cdist(last_hidden_states, last_hidden_states, 'euclidean'))
+        init_dist=get_init_dist(last_hidden_states)
         print("init_dist")
         pairwise_distances=init_dist
         iteration=0
