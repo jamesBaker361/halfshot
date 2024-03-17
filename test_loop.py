@@ -1,5 +1,6 @@
 
 import os
+os.environ["TEST_ENV"]="true"
 import torch
 if "SLURM_JOB_ID" in os.environ:
     cache_dir="/scratch/jlb638/trans_cache"

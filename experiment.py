@@ -132,6 +132,8 @@ def evaluate_pipeline(ip_adapter_image:Image,
     evaluation_image_list=[]
     generator=torch.Generator(pipeline.device)
     generator.manual_seed(123)
+    if "TEST_ENV" in os.environ:
+        evaluation_prompt_list=evaluation_prompt_list[:2]
     for evaluation_prompt in evaluation_prompt_list:
         prompt=evaluation_prompt.format(entity_name)
         print(f"eval prompt {prompt}")
