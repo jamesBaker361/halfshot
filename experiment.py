@@ -58,10 +58,10 @@ evaluation_prompt_list=[
     "a photo of {} as a police officer"
 ]
 
-evaluation_prompt_list=[
+'''evaluation_prompt_list=[
     "a photo of {} at the beach", #this is just for testing
     "a photo of {} in the jungle"
-]
+]'''
 
 clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
 clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
