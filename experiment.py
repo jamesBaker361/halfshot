@@ -9,6 +9,7 @@ if "SLURM_JOB_ID" in os.environ:
 
     torch.hub.set_dir("/scratch/jlb638/torch_hub_cache")
 from transformers import ViTImageProcessor, ViTModel
+from huggingface_hub import hf_hub_download
 from sklearn.cluster import KMeans
 from scipy.spatial.distance import cdist
 import numpy as np
@@ -264,6 +265,7 @@ def train_and_evaluate(ip_adapter_image:Image,
     vae=pipeline.vae
     tokenizer=pipeline.tokenizer
     text_encoder=pipeline.text_encoder
+    
     for model in [vae,unet,text_encoder]:
         model.requires_grad_(False)
         #set everything to not be trainable by default
@@ -283,6 +285,14 @@ def train_and_evaluate(ip_adapter_image:Image,
     prior_images=[]
     prior_text_prompt_list=[text_prompt]*n_image
     images=[]
+    if training_method.find(REWARD)!=-1:
+        weight_path=weight_path=hf_hub_download(repo_id=pretrained_lora_path,filename="pytorch_lora_weights.safetensors", repo_type="model")
+        trainable_modules=["to_k", "to_q", "to_v", "to_out.0"]
+        if training_method in [TEX_INV_REWARD, TEX_INV_IP_REWARD]:
+            trainable_modules=["to_q","to_v"]
+        if training_method in [DB_MULTI_IP_REWARD, DB_MULTI_REWARD]:
+            trainable_modules=[]
+        unet=prepare_unet_from_path(unet, weight_path,trainable_modules)
     if training_method in [CHOSEN_NEG_IP,CHOSEN_TARGET_IP,IP, CHOSEN_TEX_INV_IP,DB_MULTI_IP, TEX_INV_IP,UNET_IP]:
         use_ip_adapter=True
         pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name=ip_adapter_weight_name)
