@@ -48,8 +48,8 @@ chosen_one_args={
 '''
 
 parser=argparse.ArgumentParser()
-parser.add_argument("--n_generated_img",type=int,default=128,help="n image to generate for chosen one")
-parser.add_argument("--convergence_scale",type=float,default=0.75,help="chosen one convergence scale")
+parser.add_argument("--n_generated_img",type=int,default=64,help="n image to generate for chosen one")
+parser.add_argument("--convergence_scale",type=float,default=0.5,help="chosen one convergence scale")
 parser.add_argument("--min_cluster_size",type=int,default=5)
 parser.add_argument("--target_cluster_size",type=int,default=10)
 parser.add_argument("--learning_rate",type=float,default=0.0001)
