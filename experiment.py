@@ -477,6 +477,7 @@ def train_and_evaluate(ip_adapter_image:Image,
     try:
         torch.cuda.empty_cache()
         accelerator.free_memory()
+        gc.collect()
         print("cleared cache after eval!?!?")
     except:
         print("did not clear cache after eval")
