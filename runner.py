@@ -69,7 +69,7 @@ parser.add_argument("--dataset",type=str,default="jlbaker361/league_faces_captio
 parser.add_argument("--retain_fraction",type=float,default=0.5)
 parser.add_argument("--negative_prompt",type=str,default=NEGATIVE_PROMPT)
 parser.add_argument("--target_prompt",type=str,default=LOL_SUFFIX)
-parser.add_argument("--limit",type=int,default=30, help="n characters to try to do")
+parser.add_argument("--limit",type=int,default=10, help="n characters to try to do")
 parser.add_argument("--training_method_suite",type=str, default=CHOSEN_SUITE)
 parser.add_argument("--suffix",type=str,help="suffix to append to base text prompts",default="")
 parser.add_argument("--img_type",type=str,default="tile",help="whether to use splash or tile")
