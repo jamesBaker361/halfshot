@@ -94,6 +94,7 @@ def prepare_unet_from_path(unet,weight_path:str,trainable_modules:list):
             if name.find(module_name)!=-1 and name.find("default.weight")!=-1:
                 param.requires_grad_(True)
     print(f"loaded {count} parameters")
+    unet.print_trainable_parameters()
     return unet
 
 def prepare_textual_inversion(text_prompt:str, tokenizer:object,text_encoder:object):
