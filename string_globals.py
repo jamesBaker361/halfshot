@@ -19,12 +19,37 @@ CHOSEN_NEG="chosen_one_negative_prompt"
 CHOSEN_TARGET="chosen_one_target_prompt"
 CHOSEN_NEG_IP="chosen_one_negative_prompt_ip_adapter"
 CHOSEN_TARGET_IP="chosen_one_target_prompt_ip_adapter"
+CHOSEN_REWARD="chosen_reward"
+CHOSEN_REWARD_IP="chosen_reward_ip_adapter"
+DB_MULTI_REWARD="dreambooth_multi_reward"
+DB_MULTI_IP_REWARD="dreambooth_multi_ip_reward"
+TEX_INV_REWARD="textual_inversion_reward"
+TEX_INV_IP_REWARD="textual_inversion_ip_reward"
+UNET_REWARD="unet_lora_reward"
+UNET_IP_REWARD="unet_lora_ip_reward"
+
+
 LOL_SUFFIX=" in the style of league of legends"
 NEGATIVE_PROMPT="blurry,text,low quality,logo,poorly drawn face,horror,mutation"
 
 CHOSEN_SUITE="chosen_suite"
 LIGHT_SUITE="light_suite"
+NEGATIVE_SUITE="negative_suite"
+BASIC_SUITE="basic_suite"
+BASIC_SUITE_IP="basic_suite_ip"
+REWARD_SUITE="reward_suite"
+REWARD_SUITE_IP="reward_suite_ip"
 training_method_suite_dict={
     CHOSEN_SUITE:[CHOSEN_TARGET, CHOSEN_NEG, CHOSEN_TEX_INV],
+    CHOSEN_TARGET: [CHOSEN_TARGET],
+    CHOSEN_NEG: [CHOSEN_NEG],
+    CHOSEN_TEX_INV: [CHOSEN_TEX_INV],
+    BASIC_SUITE:[DB_MULTI, UNET, TEX_INV],
+    BASIC_SUITE_IP: [DB_MULTI_IP, UNET_IP, TEX_INV_IP],
+    REWARD_SUITE:[DB_MULTI_REWARD, UNET_REWARD, TEX_INV_REWARD],
+    REWARD_SUITE_IP: [DB_MULTI_IP_REWARD, UNET_IP_REWARD, TEX_INV_IP_REWARD],
+    CHOSEN_TARGET_IP:[CHOSEN_TARGET_IP],
+    CHOSEN_NEG_IP: [CHOSEN_NEG_IP],
+    CHOSEN_TEX_INV_IP: [CHOSEN_TEX_INV_IP],
     LIGHT_SUITE: [TEX_INV, UNET]
 }
