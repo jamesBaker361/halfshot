@@ -14,6 +14,7 @@ import wandb
 from string_globals import *
 from experiment import train_and_evaluate
 from datasets import Dataset
+import memray
 '''
 image=Image.open("file.jpg")
 text_prompt="a blonde woman"
@@ -162,4 +163,5 @@ if __name__=='__main__':
         except:
             print(slurm_var, "doesnt exist")
     print(args)
-    main(args)
+    with memray.Tracker("output_file.bin"):
+        main(args)
