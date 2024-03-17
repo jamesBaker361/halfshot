@@ -255,6 +255,7 @@ def train_and_evaluate(ip_adapter_image:Image,
     print(f"training method {training_method}")
     start=time.time()
     try:
+        gc.collect()
         torch.cuda.empty_cache()
         accelerator.free_memory()
         gc.collect()
@@ -475,6 +476,7 @@ def train_and_evaluate(ip_adapter_image:Image,
     print(f"{training_method} training elapsed {seconds} seconds == {hours} hours")
     result_dict= evaluate_pipeline(ip_adapter_image,text_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter,negative_prompt, target_prompt)
     try:
+        gc.collect()
         torch.cuda.empty_cache()
         accelerator.free_memory()
         gc.collect()
