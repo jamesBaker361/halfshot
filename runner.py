@@ -15,6 +15,7 @@ from string_globals import *
 from experiment import train_and_evaluate
 from datasets import Dataset
 import memray
+import time
 '''
 image=Image.open("file.jpg")
 text_prompt="a blonde woman"
@@ -77,6 +78,7 @@ parser.add_argument("--dest_dataset",type=str,default="jlbaker361/test_chosen_ru
 parser.add_argument("--ip_adapter_weight_name",type=str,default="ip-adapter-plus-face_sd15.bin")
 parser.add_argument("--n_prior",type=int,default=5)
 parser.add_argument("--pretrained_lora_path",type=str,default="jlbaker361/test-ddpo-b")
+parser.add_argument("--cooldown",type=float,default=600.0,help="time to sleep between training methods, maybe helps to reduce memory usage")
 
 def main(args):
     accelerator=Accelerator(log_with="wandb")
@@ -144,6 +146,7 @@ def main(args):
                 src_dict[f"{training_method}_{metric}"].append(result_dict[metric])
             data.append([training_method,label]+[result_dict[metric] for metric in metric_list])
             del result_dict
+            time.sleep(args.cooldown)
         print(src_dict)
         Dataset.from_dict(src_dict).push_to_hub(args.dest_dataset)
     accelerator.get_tracker("wandb").log({
