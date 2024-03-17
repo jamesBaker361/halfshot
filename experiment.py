@@ -330,15 +330,15 @@ def train_and_evaluate(ip_adapter_image:Image,
         validation_prompt_list=text_prompt_list
     if training_method in [DB,DB_MULTI]:
         prior_images=[
-            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None, num_inference_steps=2).images[0] for _ in range(n_image)
+            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None, num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
         ]
     if training_method in [DB_MULTI_IP]:
         prior_images=[
-            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None,ip_adapter_image=ip_adapter_image, num_inference_steps=2).images[0] for _ in range(n_image)
+            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None,ip_adapter_image=ip_adapter_image, num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
         ]
     if training_method in [DB_MULTI,TEX_INV, UNET]:
         images=[
-            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=2).images[0] for _ in range(n_image)
+            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
         ]
     if training_method==IP:
         #if trainable with ip-adapter well only be training the unet
