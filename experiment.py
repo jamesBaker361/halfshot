@@ -381,6 +381,12 @@ def train_and_evaluate(ip_adapter_image:Image,
     unet,text_encoder,vae,tokenizer = accelerator.prepare(
         unet,text_encoder,vae,tokenizer
     )
+    print("unet params")
+    unet.print_trainable_parameters()
+    print("text encoder params")
+    text_encoder.print_trainable_parameters()
+    print("tokenizer params")
+    tokenizer.print_trainable_parameters()
     if use_ip_adapter:
         image_encoder=accelerator.prepare(pipeline.image_encoder)
         image_encoder.requires_grad_(False)
