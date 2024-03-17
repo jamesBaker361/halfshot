@@ -296,13 +296,13 @@ def train_and_evaluate(ip_adapter_image:Image,
         if training_method in [DB_MULTI_IP_REWARD, DB_MULTI_REWARD]:
             trainable_modules=["to_q","to_v"]
         unet=prepare_unet_from_path(unet, weight_path,trainable_modules)
-    if training_method in [CHOSEN_NEG_IP,CHOSEN_TARGET_IP,IP, CHOSEN_TEX_INV_IP,DB_MULTI_IP, TEX_INV_IP,UNET_IP]:
+    if training_method.find(IP)!=-1:
         use_ip_adapter=True
         pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name=ip_adapter_weight_name)
         images=[
             pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=2, ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_image)
         ]
-    if training_method in [CHOSEN_TEX_INV_IP, CHOSEN_DB, CHOSEN_NEG, CHOSEN_NEG_IP, CHOSEN_TARGET, CHOSEN_TARGET_IP, CHOSEN_TEX_INV]:
+    if training_method.find(CHOSEN)!=-1:
         tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
         unet=prepare_unet(unet)
         text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
