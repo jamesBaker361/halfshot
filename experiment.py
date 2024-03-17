@@ -72,6 +72,7 @@ def prepare_unet(unet,unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"]):
         bias="none")
     unet = get_peft_model(unet, config)
     unet.train()
+    unet.print_trainable_parameters()
     return unet
 
 def prepare_unet_from_path(unet,weight_path:str,trainable_modules:list):
@@ -381,12 +382,6 @@ def train_and_evaluate(ip_adapter_image:Image,
     unet,text_encoder,vae,tokenizer = accelerator.prepare(
         unet,text_encoder,vae,tokenizer
     )
-    print("unet params")
-    unet.print_trainable_parameters()
-    print("text encoder params")
-    text_encoder.print_trainable_parameters()
-    print("tokenizer params")
-    tokenizer.print_trainable_parameters()
     if use_ip_adapter:
         image_encoder=accelerator.prepare(pipeline.image_encoder)
         image_encoder.requires_grad_(False)
