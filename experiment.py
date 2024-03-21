@@ -300,12 +300,6 @@ def train_and_evaluate(ip_adapter_image:Image,
         if training_method in [DB_MULTI_REWARD_IP, DB_MULTI_REWARD]:
             trainable_modules=["to_q","to_v"]
         unet=prepare_unet_from_path(unet, weight_path,trainable_modules)
-    if training_method.find(IP)!=-1:
-        use_ip_adapter=True
-        pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name=ip_adapter_weight_name)
-        images=[
-            pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None,num_inference_steps=2, ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_image)
-        ]
     if training_method.find(CHOSEN)!=-1:
         tokenizer,text_encoder=prepare_textual_inversion(description_prompt,tokenizer,text_encoder)
         unet=prepare_unet(unet)
