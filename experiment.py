@@ -169,7 +169,8 @@ def evaluate_pipeline(ip_adapter_image:Image,
             vector_j=image_embed_list[j]
             identity_consistency_list.append(np.dot(vector_j,vector_i)/(norm(vector_i)*norm(vector_j)))
     result_dict= {
-        #"pipeline":pipeline,"images":evaluation_image_list,
+        #"pipeline":pipeline,
+        "images":evaluation_image_list,
             "prompt_similarity":np.mean(prompt_similarity_list),
             "identity_consistency":np.mean(identity_consistency_list),
              "negative_prompt_similarity":np.mean(negative_prompt_similarity_list),
