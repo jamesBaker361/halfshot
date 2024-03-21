@@ -79,6 +79,15 @@ def prepare_unet_from_path(unet,weight_path:str,trainable_modules:list):
     unet.print_trainable_parameters()
     return unet
 
+def get_initializer_token(text_prompt:str)->str:
+    initializer_token=""
+    for token in [ "man "," woman "," boy "," girl "]:
+        if text_prompt.find(token)!=-1:
+            initializer_token=token
+    if initializer_token=="":
+        initializer_token="character"
+    return initializer_token
+
 def prepare_textual_inversion(text_prompt:str, tokenizer:object,text_encoder:object):
     initializer_token=""
     for token in [ "man "," woman "," boy "," girl "]:
@@ -288,7 +297,6 @@ def train_and_evaluate(ip_adapter_image:Image,
     negative=True
     cluster_text_prompt=description_prompt
     prior_images=[]
-    prior_text_prompt_list=[description_prompt]*n_image
     images=[]
     if training_method.find(BASIC)==-1 and training_method.find(HOT) !=-1:
         description_prompt+=hot_prompt
@@ -306,7 +314,7 @@ def train_and_evaluate(ip_adapter_image:Image,
         images=[
             pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None,num_inference_steps=2, ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_image)
         ]
-    if training_method.find(CHOSEN)!=-1:
+    if training_method.find(CHOSEN)!=-1: #TODO all chosen AND cte should do this- might be redundant with stuff in tex inv
         tokenizer,text_encoder=prepare_textual_inversion(description_prompt,tokenizer,text_encoder)
         unet=prepare_unet(unet)
         text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
@@ -315,7 +323,7 @@ def train_and_evaluate(ip_adapter_image:Image,
         entity_name=NEW_TOKEN
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
         chosen_one_args["n_generated_img"]=int(chosen_one_args["n_generated_img"]/retain_fraction)
-    if training_method in [DB,DB_MULTI,DB_MULTI_IP]:
+    if training_method in [DB,DB_MULTI,DB_MULTI_IP]: #TODO all db_multi should do this
         text_encoder_target_modules=["q_proj", "v_proj"]
         text_encoder_config=LoraConfig(
             r=8,
@@ -342,26 +350,26 @@ def train_and_evaluate(ip_adapter_image:Image,
         prior_images=[
             pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None,ip_adapter_image=ip_adapter_image, num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
         ]
-    if training_method in [DB_MULTI,TEX_INV, UNET]:
+    if training_method in [DB_MULTI,TEX_INV, UNET]: #TODO everything but chosen should do this
         images=[
             pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None,num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
         ]
-    if training_method in [UNET, UNET_IP]:
+    if training_method in [UNET, UNET_IP]: #TODO all uNet should do this
         unet=prepare_unet(unet)
         text_prompt_list=[NEW_TOKEN]*n_image
         validation_prompt_list=text_prompt_list
-    if training_method in [TEX_INV,TEX_INV_IP,CHOSEN_TEX_INV]:
+    if training_method in [TEX_INV,TEX_INV_IP,CHOSEN_TEX_INV]: #TODO all chosen,cte,and tex_inv should do this
         tokenizer,text_encoder=prepare_textual_inversion(description_prompt,tokenizer,text_encoder)
         entity_name=NEW_TOKEN
         text_prompt_list=[imagenet_template.format(entity_name) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
-    if training_method in [CHOSEN_TEX_INV]: #this is what the OG chosen paper did
+    if training_method in [CHOSEN_TEX_INV]: #TODD all cte should do this
         cluster_function=get_best_cluster_kmeans
-    if training_method  in [CHOSEN_COLD, CHOSEN_COLD_IP]:
+    if training_method  in [CHOSEN_COLD, CHOSEN_COLD_IP]: #TODO all chosen_cold should do this (incl BASIC)
         cluster_text_prompt=cold_prompt
         cluster_function=get_best_cluster_sorted
-    if training_method in [CHOSEN_HOT, CHOSEN_HOT_IP]:
+    if training_method in [CHOSEN_HOT, CHOSEN_HOT_IP]:  #TODO all chosen_hot should do this (incl BASIC)
         cluster_text_prompt=hot_prompt
         cluster_function=get_best_cluster_sorted
         negative=False
