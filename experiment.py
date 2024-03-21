@@ -221,7 +221,7 @@ imagenet_template_list = [
 
 
 def train_and_evaluate(ip_adapter_image:Image,
-                       text_prompt:str, 
+                       description_prompt:str, 
                        accelerator:Accelerator,
                        learning_rate:float,
                        adam_beta1:float,
@@ -239,8 +239,8 @@ def train_and_evaluate(ip_adapter_image:Image,
                         num_validation_images:int,
                         noise_offset:float,
                         max_grad_norm:float,
-                        negative_prompt:str,
-                        target_prompt:str,
+                        cold_prompt:str,
+                        hot_prompt:str,
                         retain_fraction:float,
                         ip_adapter_weight_name:str,
                         chosen_one_args:dict,
@@ -283,12 +283,14 @@ def train_and_evaluate(ip_adapter_image:Image,
     use_ip_adapter=False
     use_chosen_one=False
     random_text_prompt=False
-    entity_name=text_prompt
+    entity_name=description_prompt
     negative=True
-    cluster_text_prompt=text_prompt
+    cluster_text_prompt=description_prompt
     prior_images=[]
-    prior_text_prompt_list=[text_prompt]*n_image
+    prior_text_prompt_list=[description_prompt]*n_image
     images=[]
+    if training_method.find(BASIC)==-1 and training_method.find(HOT) !=-1:
+        description_prompt+=hot_prompt
     if training_method.find(REWARD)!=-1:
         weight_path=hf_hub_download(repo_id=pretrained_lora_path,filename="pytorch_lora_weights.safetensors", repo_type="model")
         trainable_modules=["to_k", "to_q", "to_v", "to_out.0"]
@@ -301,10 +303,10 @@ def train_and_evaluate(ip_adapter_image:Image,
         use_ip_adapter=True
         pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name=ip_adapter_weight_name)
         images=[
-            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=2, ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_image)
+            pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None,num_inference_steps=2, ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_image)
         ]
     if training_method.find(CHOSEN)!=-1:
-        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
+        tokenizer,text_encoder=prepare_textual_inversion(description_prompt,tokenizer,text_encoder)
         unet=prepare_unet(unet)
         text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
@@ -328,20 +330,20 @@ def train_and_evaluate(ip_adapter_image:Image,
         unet_target_modules= ["to_q", "to_v", "query", "value"]
         unet=prepare_unet(unet,unet_target_modules=unet_target_modules)
         with_prior_preservation=True
-        text_prompt_list=[NEW_TOKEN+" "+ text_prompt]*n_image
-        entity_name=NEW_TOKEN+" "+text_prompt
+        text_prompt_list=[NEW_TOKEN]*n_image
+        entity_name=NEW_TOKEN
         validation_prompt_list=text_prompt_list
     if training_method in [DB,DB_MULTI]:
         prior_images=[
-            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None, num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
+            pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None, num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
         ]
     if training_method in [DB_MULTI_IP]:
         prior_images=[
-            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None,ip_adapter_image=ip_adapter_image, num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
+            pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None,ip_adapter_image=ip_adapter_image, num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
         ]
     if training_method in [DB_MULTI,TEX_INV, UNET]:
         images=[
-            pipeline(text_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
+            pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None,num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
         ]
     if training_method==IP:
         #if trainable with ip-adapter well only be training the unet
@@ -349,14 +351,14 @@ def train_and_evaluate(ip_adapter_image:Image,
         unet_target_modules= ["to_q", "to_v", "query", "value"]
         unet=prepare_unet(unet, unet_target_modules)
         images=[ip_adapter_image]*n_image
-        text_prompt_list=[text_prompt]*n_image
+        text_prompt_list=[NEW_TOKEN]*n_image
         validation_prompt_list=text_prompt_list
     if training_method in [UNET, UNET_IP]:
         unet=prepare_unet(unet)
-        text_prompt_list=[text_prompt]*n_image
+        text_prompt_list=[NEW_TOKEN]*n_image
         validation_prompt_list=text_prompt_list
     if training_method in [TEX_INV,TEX_INV_IP,CHOSEN_TEX_INV_IP, CHOSEN_TEX_INV]:
-        tokenizer,text_encoder=prepare_textual_inversion(text_prompt,tokenizer,text_encoder)
+        tokenizer,text_encoder=prepare_textual_inversion(description_prompt,tokenizer,text_encoder)
         entity_name=NEW_TOKEN
         text_prompt_list=[imagenet_template.format(entity_name) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
@@ -364,10 +366,10 @@ def train_and_evaluate(ip_adapter_image:Image,
     if training_method in [CHOSEN_TEX_INV,CHOSEN_TEX_INV_IP,CHOSEN_DB]: #this is what the OG chosen paper did
         cluster_function=get_best_cluster_kmeans
     if training_method  in [CHOSEN_COLD, CHOSEN_COLD_IP]:
-        cluster_text_prompt=negative_prompt
+        cluster_text_prompt=cold_prompt
         cluster_function=get_best_cluster_sorted
     if training_method in [CHOSEN_HOT, CHOSEN_HOT_IP]:
-        cluster_text_prompt=target_prompt
+        cluster_text_prompt=hot_prompt
         cluster_function=get_best_cluster_sorted
         negative=False
     for model in [vae,unet,text_encoder]:
@@ -429,10 +431,10 @@ def train_and_evaluate(ip_adapter_image:Image,
         n_clusters=n_generated_img // target_cluster_size
         if use_ip_adapter:
             image_list=[
-                pipeline(text_prompt,negative_prompt=negative_prompt,num_inference_steps=timesteps_per_image,safety_checker=None,ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_generated_img)]
+                pipeline(description_prompt,negative_prompt=cold_prompt,num_inference_steps=timesteps_per_image,safety_checker=None,ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_generated_img)]
         else:
             image_list=[
-                pipeline(text_prompt,negative_prompt=negative_prompt,num_inference_steps=timesteps_per_image,safety_checker=None).images[0] for _ in range(n_generated_img)]
+                pipeline(description_prompt,negative_prompt=cold_prompt,num_inference_steps=timesteps_per_image,safety_checker=None).images[0] for _ in range(n_generated_img)]
         print("generated initial sets of images")
         last_hidden_states=get_hidden_states(image_list)
         print("last hidden staes")
@@ -476,9 +478,9 @@ def train_and_evaluate(ip_adapter_image:Image,
                 noise_offset=noise_offset,
                 max_grad_norm=max_grad_norm)
             if use_ip_adapter:
-                image_list=[pipeline(entity_name,num_inference_steps=timesteps_per_image,num_images_per_prompt=1,safety_checker=None,ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_generated_img)]
+                image_list=[pipeline(description_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=1,safety_checker=None,ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_generated_img)]
             else:
-                image_list=[pipeline(entity_name,num_inference_steps=timesteps_per_image,safety_checker=None,num_images_per_prompt=1).images[0] for _ in range(n_generated_img) ]
+                image_list=[pipeline(description_prompt,num_inference_steps=timesteps_per_image,safety_checker=None,num_images_per_prompt=1).images[0] for _ in range(n_generated_img) ]
             iteration+=1
         del image_list
         del valid_image_list
@@ -486,7 +488,7 @@ def train_and_evaluate(ip_adapter_image:Image,
     seconds=end-start
     hours=seconds/3600
     print(f"{training_method} training elapsed {seconds} seconds == {hours} hours")
-    result_dict= evaluate_pipeline(ip_adapter_image,text_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter,negative_prompt, target_prompt)
+    result_dict= evaluate_pipeline(ip_adapter_image,description_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter,cold_prompt, hot_prompt)
     try:
         gc.collect()
         torch.cuda.empty_cache()
