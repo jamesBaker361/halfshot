@@ -65,7 +65,7 @@ clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
 def prepare_unet(unet,unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"]):
     config = LoraConfig(
-        r=8,
+        r=4,
         lora_alpha=32,
         target_modules=unet_target_modules,
         lora_dropout=0.0,
