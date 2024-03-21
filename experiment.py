@@ -495,4 +495,6 @@ def train_and_evaluate(ip_adapter_image:Image,
     except:
         print("did not clear cache after eval")
     del pipeline, images,unet,vae,text_encoder,optimizer
+    if use_ip_adapter:
+        del image_encoder
     return result_dict
