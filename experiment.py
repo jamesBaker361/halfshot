@@ -342,6 +342,8 @@ def train_and_evaluate(ip_adapter_image:Image,
         text_prompt_list=[NEW_TOKEN]*n_image
         entity_name=NEW_TOKEN
         validation_prompt_list=text_prompt_list
+        initializer_token=get_initializer_token(description_prompt)
+        prior_text_prompt_list=[initializer_token]*n_image
     if training_method.find(DB_MULTI)!=-1 and training_method.find(IP)==-1:
         prior_images=[
             pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None, num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
