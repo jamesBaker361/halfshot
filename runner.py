@@ -80,8 +80,10 @@ parser.add_argument("--ip_adapter_weight_name",type=str,default="ip-adapter-plus
 parser.add_argument("--n_prior",type=int,default=5)
 parser.add_argument("--pretrained_lora_path",type=str,default="jlbaker361/test-ddpo-runway")
 parser.add_argument("--cooldown",type=float,default=600.0,help="time to sleep between training methods, maybe helps to reduce memory usage")
+parser.add_argument("--image_dir",type=str,default="/scratch/jlb638/faceip")
 
 def main(args):
+    os.makedirs(args.image_dir,exist_ok=True)
     accelerator=Accelerator(log_with="wandb")
     accelerator.init_trackers(project_name="chosen_comparison")
     chosen_one_args={
@@ -145,6 +147,12 @@ def main(args):
         for metric in metric_list:
             src_dict[f"{training_method}_{metric}"].append(result_dict[metric])
         data.append([training_method,label]+[result_dict[metric] for metric in metric_list])
+        for i,image in enumerate(result_dict["images"]):
+            path=f"{args.image_dir}/{label}/{training_method}_{i}.png"
+            image.save(path)
+            accelerator.log({
+                f"{label}/{training_method}_{i}":wandb.Image(path)
+            })
         del result_dict
         time.sleep(args.cooldown)
         print(src_dict)
