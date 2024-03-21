@@ -323,7 +323,7 @@ def train_and_evaluate(ip_adapter_image:Image,
         entity_name=NEW_TOKEN
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
         chosen_one_args["n_generated_img"]=int(chosen_one_args["n_generated_img"]/retain_fraction)
-    if training_method in [DB,DB_MULTI,DB_MULTI_IP]: #TODO all db_multi should do this
+    if training_method in [DB,DB_MULTI,DB_MULTI_IP]: #TODO all db_multi should do this eexcept for reward
         text_encoder_target_modules=["q_proj", "v_proj"]
         text_encoder_config=LoraConfig(
             r=8,
@@ -354,7 +354,7 @@ def train_and_evaluate(ip_adapter_image:Image,
         images=[
             pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None,num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
         ]
-    if training_method in [UNET, UNET_IP]: #TODO all uNet should do this
+    if training_method in [UNET, UNET_IP]: #TODO all uNet should do this except for reward
         unet=prepare_unet(unet)
         text_prompt_list=[NEW_TOKEN]*n_image
         validation_prompt_list=text_prompt_list
