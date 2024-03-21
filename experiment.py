@@ -290,7 +290,7 @@ def train_and_evaluate(ip_adapter_image:Image,
     prior_text_prompt_list=[text_prompt]*n_image
     images=[]
     if training_method.find(REWARD)!=-1:
-        weight_path=weight_path=hf_hub_download(repo_id=pretrained_lora_path,filename="pytorch_lora_weights.safetensors", repo_type="model")
+        weight_path=hf_hub_download(repo_id=pretrained_lora_path,filename="pytorch_lora_weights.safetensors", repo_type="model")
         trainable_modules=["to_k", "to_q", "to_v", "to_out.0"]
         if training_method in [TEX_INV_REWARD, TEX_INV_IP_REWARD]:
             trainable_modules=[]
