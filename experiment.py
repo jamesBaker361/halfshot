@@ -322,6 +322,7 @@ def train_and_evaluate(ip_adapter_image:Image,
         )
         text_encoder=get_peft_model(text_encoder,text_encoder_config)
         text_encoder.train()
+        text_encoder.print_trainable_parameters()
 
         unet_target_modules= ["to_q", "to_v", "query", "value"]
         unet=prepare_unet(unet,unet_target_modules=unet_target_modules)
