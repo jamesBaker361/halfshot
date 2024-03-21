@@ -295,9 +295,9 @@ def train_and_evaluate(ip_adapter_image:Image,
     if training_method.find(REWARD)!=-1:
         weight_path=hf_hub_download(repo_id=pretrained_lora_path,filename="pytorch_lora_weights.safetensors", repo_type="model")
         trainable_modules=["to_k", "to_q", "to_v", "to_out.0"]
-        if training_method in [TEX_INV_REWARD, TEX_INV_IP_REWARD]:
+        if training_method in [TEX_INV_REWARD, TEX_INV_REWARD_IP]:
             trainable_modules=[]
-        if training_method in [DB_MULTI_IP_REWARD, DB_MULTI_REWARD]:
+        if training_method in [DB_MULTI_REWARD_IP, DB_MULTI_REWARD]:
             trainable_modules=["to_q","to_v"]
         unet=prepare_unet_from_path(unet, weight_path,trainable_modules)
     if training_method.find(IP)!=-1:
@@ -358,13 +358,13 @@ def train_and_evaluate(ip_adapter_image:Image,
         unet=prepare_unet(unet)
         text_prompt_list=[NEW_TOKEN]*n_image
         validation_prompt_list=text_prompt_list
-    if training_method in [TEX_INV,TEX_INV_IP,CHOSEN_TEX_INV_IP, CHOSEN_TEX_INV]:
+    if training_method in [TEX_INV,TEX_INV_IP,CHOSEN_TEX_INV]:
         tokenizer,text_encoder=prepare_textual_inversion(description_prompt,tokenizer,text_encoder)
         entity_name=NEW_TOKEN
         text_prompt_list=[imagenet_template.format(entity_name) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
-    if training_method in [CHOSEN_TEX_INV,CHOSEN_TEX_INV_IP,CHOSEN_DB]: #this is what the OG chosen paper did
+    if training_method in [CHOSEN_TEX_INV]: #this is what the OG chosen paper did
         cluster_function=get_best_cluster_kmeans
     if training_method  in [CHOSEN_COLD, CHOSEN_COLD_IP]:
         cluster_text_prompt=cold_prompt
