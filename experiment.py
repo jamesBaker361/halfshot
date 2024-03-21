@@ -40,25 +40,6 @@ def get_trained_pipeline(
     return None
 
 
-evaluation_prompt_list=[
-    "a photo of {} at the beach",
-    "a photo of {} in the jungle",
-    "a photo of {} in the snow",
-    "a photo of {} in the street",
-    "a photo of {} with a city in the background",
-    "a photo of {} with a mountain in the background",
-    "a photo of {} with the Eiffel Tower in the background",
-    "a photo of {} near the Statue of Liberty",
-    "a photo of {} near the Sydney Opera House",
-    "a photo of {} floating on top of water",
-    "a photo of {} eating a burger",
-    "a photo of {} drinking a beer",
-    "a photo of {} wearing a blue hat",
-    "a photo of {} wearing sunglasses",
-    "a photo of {} playing with a ball",
-    "a photo of {} as a police officer"
-]
-
 
 clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
 clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
@@ -133,6 +114,24 @@ def evaluate_pipeline(ip_adapter_image:Image,
     evaluation_image_list=[]
     generator=torch.Generator(pipeline.device)
     generator.manual_seed(123)
+    evaluation_prompt_list=[
+        "a photo of {} at the beach",
+        "a photo of {} in the jungle",
+        "a photo of {} in the snow",
+        "a photo of {} in the street",
+        "a photo of {} with a city in the background",
+        "a photo of {} with a mountain in the background",
+        "a photo of {} with the Eiffel Tower in the background",
+        "a photo of {} near the Statue of Liberty",
+        "a photo of {} near the Sydney Opera House",
+        "a photo of {} floating on top of water",
+        "a photo of {} eating a burger",
+        "a photo of {} drinking a beer",
+        "a photo of {} wearing a blue hat",
+        "a photo of {} wearing sunglasses",
+        "a photo of {} playing with a ball",
+        "a photo of {} as a police officer"
+    ]
     if "TEST_ENV" in os.environ:
         evaluation_prompt_list=evaluation_prompt_list[:2]
     for evaluation_prompt in evaluation_prompt_list:
