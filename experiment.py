@@ -53,6 +53,7 @@ def prepare_unet(unet,unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"]):
         bias="none")
     unet = get_peft_model(unet, config)
     unet.train()
+    print("prepare unet trainable parameters")
     unet.print_trainable_parameters()
     return unet
 
@@ -74,7 +75,7 @@ def prepare_unet_from_path(unet,weight_path:str,trainable_modules:list):
         for module_name in trainable_modules:
             if name.find(module_name)!=-1 and name.find("default.weight")!=-1:
                 param.requires_grad_(True)
-    print(f"loaded {count} parameters")
+    print(f"loaded {count} parameters in prepare_unet_from_path")
     unet.print_trainable_parameters()
     return unet
 
@@ -321,6 +322,7 @@ def train_and_evaluate(ip_adapter_image:Image,
         )
         text_encoder=get_peft_model(text_encoder,text_encoder_config)
         text_encoder.train()
+        print("text encoder parameters")
         text_encoder.print_trainable_parameters()
 
         unet_target_modules= ["to_q", "to_v", "query", "value"]
