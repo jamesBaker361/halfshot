@@ -85,7 +85,7 @@ def prepare_textual_inversion(text_prompt:str, tokenizer:object,text_encoder:obj
         if text_prompt.find(token)!=-1:
             initializer_token=token
     if initializer_token=="":
-        initializer_token="person"
+        initializer_token="character"
     placeholder_tokens=[NEW_TOKEN]
     tokenizer.add_tokens(placeholder_tokens)
     token_ids = tokenizer.encode(initializer_token, add_special_tokens=False)
