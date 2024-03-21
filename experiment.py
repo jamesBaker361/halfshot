@@ -362,10 +362,10 @@ def train_and_evaluate(ip_adapter_image:Image,
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
     if training_method in [CHOSEN_TEX_INV,CHOSEN_TEX_INV_IP,CHOSEN_DB]: #this is what the OG chosen paper did
         cluster_function=get_best_cluster_kmeans
-    if training_method  in [CHOSEN_NEG, CHOSEN_NEG_IP]:
+    if training_method  in [CHOSEN_COLD, CHOSEN_COLD_IP]:
         cluster_text_prompt=negative_prompt
         cluster_function=get_best_cluster_sorted
-    if training_method in [CHOSEN_TARGET, CHOSEN_TARGET_IP]:
+    if training_method in [CHOSEN_HOT, CHOSEN_HOT_IP]:
         cluster_text_prompt=target_prompt
         cluster_function=get_best_cluster_sorted
         negative=False
