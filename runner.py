@@ -71,13 +71,14 @@ parser.add_argument("--negative_prompt",type=str,default=NEGATIVE_PROMPT)
 parser.add_argument("--target_prompt",type=str,default=LOL_SUFFIX)
 parser.add_argument("--limit",type=int,default=10, help="n characters to try to do")
 parser.add_argument("--training_method_suite",type=str, default=CHOSEN_SUITE)
+parser.add_argument("--training_method",type=str, default=UNET)
 parser.add_argument("--suffix",type=str,help="suffix to append to base text prompts",default="")
 parser.add_argument("--img_type",type=str,default="tile",help="whether to use splash or tile")
 parser.add_argument("--prior_loss_weight",type=float,default=0.5,help="weight for prior preservation")
 parser.add_argument("--dest_dataset",type=str,default="jlbaker361/test_chosen_runner",help="destination dataset to push results")
 parser.add_argument("--ip_adapter_weight_name",type=str,default="ip-adapter-plus-face_sd15.bin")
 parser.add_argument("--n_prior",type=int,default=5)
-parser.add_argument("--pretrained_lora_path",type=str,default="jlbaker361/test-ddpo-b")
+parser.add_argument("--pretrained_lora_path",type=str,default="jlbaker361/test-ddpo-runway")
 parser.add_argument("--cooldown",type=float,default=600.0,help="time to sleep between training methods, maybe helps to reduce memory usage")
 
 def main(args):
@@ -114,10 +115,9 @@ def main(args):
             ip_adapter_image=splash
         elif args.img_type=="tile":
             ip_adapter_image=tile
-        for training_method in training_method_list:
-            result_dict=train_and_evaluate(
+        result_dict=train_and_evaluate(
                 ip_adapter_image=ip_adapter_image,
-                text_prompt=text_prompt,
+                description_prompt=text_prompt,
                 accelerator=accelerator,
                 learning_rate=args.learning_rate,
                 adam_beta1=args.adam_beta1,
@@ -135,18 +135,18 @@ def main(args):
                 num_validation_images=args.num_validation_images,
                 noise_offset=args.noise_offset,
                 max_grad_norm=args.max_grad_norm,
-                negative_prompt=args.negative_prompt,
-                target_prompt=args.target_prompt,
+                cold_prompt=args.negative_prompt,
+                hot_prompt=args.target_prompt,
                 retain_fraction=args.retain_fraction,
                 ip_adapter_weight_name=args.ip_adapter_weight_name,
                 chosen_one_args=chosen_one_args,
                 pretrained_lora_path=args.pretrained_lora_path
             )
-            for metric in metric_list:
-                src_dict[f"{training_method}_{metric}"].append(result_dict[metric])
-            data.append([training_method,label]+[result_dict[metric] for metric in metric_list])
-            del result_dict
-            time.sleep(args.cooldown)
+        for metric in metric_list:
+            src_dict[f"{training_method}_{metric}"].append(result_dict[metric])
+        data.append([training_method,label]+[result_dict[metric] for metric in metric_list])
+        del result_dict
+        time.sleep(args.cooldown)
         print(src_dict)
         Dataset.from_dict(src_dict).push_to_hub(args.dest_dataset)
     accelerator.get_tracker("wandb").log({
