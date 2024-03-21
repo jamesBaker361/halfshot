@@ -300,6 +300,12 @@ def train_and_evaluate(ip_adapter_image:Image,
         if training_method in [DB_MULTI_REWARD_IP, DB_MULTI_REWARD]:
             trainable_modules=["to_q","to_v"]
         unet=prepare_unet_from_path(unet, weight_path,trainable_modules)
+    if training_method.find(IP)!=-1:
+        use_ip_adapter=True
+        pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name=ip_adapter_weight_name)
+        images=[
+            pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None,num_inference_steps=2, ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_image)
+        ]
     if training_method.find(CHOSEN)!=-1:
         tokenizer,text_encoder=prepare_textual_inversion(description_prompt,tokenizer,text_encoder)
         unet=prepare_unet(unet)
@@ -340,14 +346,6 @@ def train_and_evaluate(ip_adapter_image:Image,
         images=[
             pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None,num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
         ]
-    if training_method==IP:
-        #if trainable with ip-adapter well only be training the unet
-        #this particular case well not actually use b/c training images=ip image
-        unet_target_modules= ["to_q", "to_v", "query", "value"]
-        unet=prepare_unet(unet, unet_target_modules)
-        images=[ip_adapter_image]*n_image
-        text_prompt_list=[NEW_TOKEN]*n_image
-        validation_prompt_list=text_prompt_list
     if training_method in [UNET, UNET_IP]:
         unet=prepare_unet(unet)
         text_prompt_list=[NEW_TOKEN]*n_image
