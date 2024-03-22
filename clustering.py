@@ -15,10 +15,10 @@ import numpy as np
 
 #remove backgrounds and use faces?
 
-vit_processor = ViTImageProcessor.from_pretrained('facebook/dino-vitb16')
-vit_model = ViTModel.from_pretrained('facebook/dino-vitb16')
-clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+#vit_processor = ViTImageProcessor.from_pretrained('facebook/dino-vitb16')
+#vit_model = ViTModel.from_pretrained('facebook/dino-vitb16')
+#clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+#clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
 def get_init_dist(last_hidden_states)->float:
     n=len(last_hidden_states)
@@ -31,7 +31,7 @@ def get_init_dist(last_hidden_states)->float:
 
     
 
-def get_hidden_states(image_list:list):
+def get_hidden_states(image_list:list, vit_processor: ViTImageProcessor, vit_model:ViTModel):
     vit_inputs = vit_processor(images=image_list, return_tensors="pt")
     print("inputs :)")
     vit_outputs=vit_model(**vit_inputs)
@@ -44,8 +44,11 @@ def get_hidden_states(image_list:list):
 def get_best_cluster_kmeans(
         image_list:list,
                             n_clusters:int,
-                            min_cluster_size:int,*args):
-    last_hidden_states=get_hidden_states(image_list)
+                            min_cluster_size:int,
+                            clip_processor:CLIPProcessor, clip_model:CLIPModel,
+                            vit_processor: ViTImageProcessor, 
+                            vit_model:ViTModel):
+    last_hidden_states=get_hidden_states(image_list,vit_processor,vit_model)
     k_means = KMeans(n_clusters=n_clusters, random_state=0).fit(last_hidden_states)
     
     cluster_dict={}
@@ -71,7 +74,7 @@ def get_best_cluster_kmeans(
             valid_image_list.append(image)
     return valid_image_list, dist_dict[min_label]
 
-def get_ranked_images_list(image_list:list, text_prompt:str)->list:
+def get_ranked_images_list(image_list:list, text_prompt:str,clip_processor:CLIPProcessor, clip_model:CLIPModel)->list:
     clip_inputs=clip_processor(text=[text_prompt], images=image_list, return_tensors="pt", padding=True)
     clip_outputs = clip_model(**clip_inputs)
     logits_per_image=clip_outputs.logits_per_image.detach().numpy()[0]
@@ -87,11 +90,12 @@ def get_best_cluster_sorted(
         min_cluster_size:int,
         text_prompt:str,
         retain_fraction:float,
-        negative:bool):
-    ranked_image_list=get_ranked_images_list(image_list, text_prompt)
+        negative:bool,clip_processor:CLIPProcessor, clip_model:CLIPModel,
+        vit_processor: ViTImageProcessor, vit_model:ViTModel):
+    ranked_image_list=get_ranked_images_list(image_list, text_prompt,clip_processor,clip_model)
     limit=int(len(image_list) * retain_fraction)
     if negative:
         ranked_image_list=ranked_image_list[:limit]
     else:
         ranked_image_list=ranked_image_list[-limit:]
-    return get_best_cluster_kmeans(image_list,n_clusters, min_cluster_size)
+    return get_best_cluster_kmeans(image_list,n_clusters, min_cluster_size,vit_processor,vit_model)

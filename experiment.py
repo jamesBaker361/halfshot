@@ -40,10 +40,6 @@ def get_trained_pipeline(
     return None
 
 
-
-clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-
 def prepare_unet(unet,unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"]):
     config = LoraConfig(
         r=4,
@@ -120,7 +116,9 @@ def evaluate_pipeline(ip_adapter_image:Image,
                       timesteps_per_image:int,
                       use_ip_adapter:bool,
                       negative_prompt:str,
-                      target_prompt:str)->dict:
+                      target_prompt:str,
+                      clip_processor:CLIPProcessor,
+                       clip_model:CLIPModel )->dict:
     evaluation_image_list=[]
     generator=torch.Generator(pipeline.device)
     generator.manual_seed(123)
@@ -274,6 +272,10 @@ def train_and_evaluate(ip_adapter_image:Image,
     except:
         print("did not clear cache")
     pipeline=StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5")
+    clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+    clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+    vit_processor = ViTImageProcessor.from_pretrained('facebook/dino-vitb16')
+    vit_model = ViTModel.from_pretrained('facebook/dino-vitb16')
     pipeline.safety_checker=None
     unet=pipeline.unet
     vae=pipeline.vae
@@ -283,8 +285,8 @@ def train_and_evaluate(ip_adapter_image:Image,
     for model in [vae,unet,text_encoder]:
         model.requires_grad_(False)
         #set everything to not be trainable by default
-    unet,text_encoder,vae,tokenizer = accelerator.prepare(
-        unet,text_encoder,vae,tokenizer
+    unet,text_encoder,vae,tokenizer,clip_model,clip_processor, vit_processor, vit_model = accelerator.prepare(
+        unet,text_encoder,vae,tokenizer,clip_model,clip_processor, vit_processor, vit_model
     )
     pipeline("nothing",num_inference_steps=2,safety_checker=None) #if we dont do this the properties wont instantiate correctly???
     trainable_parameters=[]
@@ -408,7 +410,7 @@ def train_and_evaluate(ip_adapter_image:Image,
             image_list=[
                 pipeline(description_prompt,negative_prompt=cold_prompt,num_inference_steps=timesteps_per_image,safety_checker=None).images[0] for _ in range(n_generated_img)]
         print("generated initial sets of images")
-        last_hidden_states=get_hidden_states(image_list)
+        last_hidden_states=get_hidden_states(image_list,vit_processor,vit_model)
         print("last hidden staes")
         init_dist=get_init_dist(last_hidden_states)
         print("init_dist")
@@ -421,7 +423,8 @@ def train_and_evaluate(ip_adapter_image:Image,
                                                                   min_cluster_size,
                                                                   cluster_text_prompt,
                                                                   retain_fraction,
-                                                                  negative)
+                                                                  negative,clip_processor,clip_model,
+                                                                  vit_processor,vit_model)
             print(f"iteration {iteration} pairwise distances {pairwise_distances} vs target {convergence_scale*init_dist}")
             if not random_text_prompt:
                 text_prompt_list=text_prompt_list*len(valid_image_list)
@@ -487,7 +490,7 @@ def train_and_evaluate(ip_adapter_image:Image,
     seconds=end-start
     hours=seconds/3600
     print(f"{training_method} training elapsed {seconds} seconds == {hours} hours")
-    result_dict= evaluate_pipeline(ip_adapter_image,description_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter,cold_prompt, hot_prompt)
+    result_dict= evaluate_pipeline(ip_adapter_image,description_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter,cold_prompt, hot_prompt,clip_processor,clip_model)
     try:
         gc.collect()
         torch.cuda.empty_cache()
