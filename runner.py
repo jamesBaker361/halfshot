@@ -148,6 +148,7 @@ def main(args):
             src_dict[f"{training_method}_{metric}"].append(result_dict[metric])
         data.append([training_method,label]+[result_dict[metric] for metric in metric_list])
         for i,image in enumerate(result_dict["images"]):
+            os.makedirs(f"{args.image_dir}/{label}/",exist_ok=True)
             path=f"{args.image_dir}/{label}/{training_method}_{i}.png"
             image.save(path)
             accelerator.log({
@@ -174,5 +175,4 @@ if __name__=='__main__':
         except:
             print(slurm_var, "doesnt exist")
     print(args)
-    with memray.Tracker("output_file.bin"):
-        main(args)
+    main(args)
