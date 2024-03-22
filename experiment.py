@@ -116,7 +116,7 @@ def evaluate_pipeline(ip_adapter_image:Image,
                       pipeline:StableDiffusionPipeline,
                       timesteps_per_image:int,
                       use_ip_adapter:bool,
-                      cold_prompt:str,
+                      negative_prompt:str,
                       target_prompt:str,
                       clip_processor:CLIPProcessor,
                        clip_model:CLIPModel )->dict:
@@ -148,15 +148,15 @@ def evaluate_pipeline(ip_adapter_image:Image,
         prompt=evaluation_prompt.format(entity_name)
         print(f"eval prompt {prompt}")
         if use_ip_adapter:
-            eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,ip_adapter_image=ip_adapter_image,negative_prompt=cold_prompt).images[0]
+            eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,ip_adapter_image=ip_adapter_image,negative_prompt=negative_prompt).images[0]
         else:
-            eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,negative_prompt=cold_prompt).images[0]
+            eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,negative_prompt=negative_prompt).images[0]
         evaluation_image_list.append(eval_image)
-    if cold_prompt in ["", " "]:
-        cold_prompt=text_prompt
+    if negative_prompt in ["", " "]:
+        negative_prompt=text_prompt
     if target_prompt in ["", " "]:
         target_prompt=text_prompt
-    text_list=[text_prompt, cold_prompt, target_prompt]
+    text_list=[text_prompt, negative_prompt, target_prompt]
     clip_inputs=clip_processor(text=text_list, images=evaluation_image_list, return_tensors="pt", padding=True)
 
     outputs = clip_model(**clip_inputs)
@@ -496,7 +496,7 @@ def train_and_evaluate(ip_adapter_image:Image,
     seconds=end-start
     hours=seconds/3600
     print(f"{training_method} training elapsed {seconds} seconds == {hours} hours")
-    result_dict= evaluate_pipeline(ip_adapter_image,description_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter,cold_prompt, hot_prompt,clip_processor,clip_model)
+    result_dict= evaluate_pipeline(ip_adapter_image,description_prompt,entity_name,pipeline,timesteps_per_image,use_ip_adapter,negative_prompt, hot_prompt,clip_processor,clip_model)
     try:
         gc.collect()
         torch.cuda.empty_cache()
