@@ -314,16 +314,11 @@ def train_and_evaluate(ip_adapter_image:Image,
         images=[
             pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None,num_inference_steps=2, ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_image)
         ]
-    if training_method.find(CHOSEN)!=-1: #TODO all chosen AND cte should do this- might be redundant with stuff in tex inv
-        tokenizer,text_encoder=prepare_textual_inversion(description_prompt,tokenizer,text_encoder)
-        unet=prepare_unet(unet)
-        text_prompt_list=[imagenet_template.format(NEW_TOKEN) for imagenet_template in imagenet_template_list]
-        random_text_prompt=True
+    if training_method.find(CHOSEN)!=-1 or training_method.find(CHOSEN_TEX_INV)!=-1: #TODO all chosen AND cte should do this- might be redundant with stuff in tex inv
         use_chosen_one=True
-        entity_name=NEW_TOKEN
-        validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
+    if training_method.find(CHOSEN)!=-1:
         chosen_one_args["n_generated_img"]=int(chosen_one_args["n_generated_img"]/retain_fraction)
-    if training_method in [DB,DB_MULTI,DB_MULTI_IP]: #TODO all db_multi should do this eexcept for reward
+    if training_method.find(DB_MULTI)!=-1: #TODO all db_multi should do this eexcept for reward
         text_encoder_target_modules=["q_proj", "v_proj"]
         text_encoder_config=LoraConfig(
             r=8,
@@ -352,26 +347,26 @@ def train_and_evaluate(ip_adapter_image:Image,
         prior_images=[
             pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None,ip_adapter_image=ip_adapter_image, num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
         ]
-    if training_method in [DB_MULTI,TEX_INV, UNET]: #TODO everything but chosen should do this
+    if training_method.find(CHOSEN)==-1 and training_method.find(CHOSEN_TEX_INV)==-1: #TODO everything but chosen should do this
         images=[
             pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None,num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
         ]
-    if training_method in [UNET, UNET_IP]: #TODO all uNet should do this except for reward
+    if training_method.find(UNET)!=-1: #TODO all uNet should do this except for reward
         unet=prepare_unet(unet)
         text_prompt_list=[NEW_TOKEN]*n_image
         validation_prompt_list=text_prompt_list
-    if training_method in [TEX_INV,TEX_INV_IP,CHOSEN_TEX_INV]: #TODO all chosen,cte,and tex_inv should do this
+    if training_method.find(TEX_INV)!=-1 or training_method.find(CHOSEN)!=-1 or training_method.find(CHOSEN_TEX_INV)!=-1: #TODO all chosen,cte,and tex_inv should do this
         tokenizer,text_encoder=prepare_textual_inversion(description_prompt,tokenizer,text_encoder)
         entity_name=NEW_TOKEN
         text_prompt_list=[imagenet_template.format(entity_name) for imagenet_template in imagenet_template_list]
         random_text_prompt=True
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
-    if training_method in [CHOSEN_TEX_INV]: #TODD all cte should do this
+    if training_method.find(CHOSEN_TEX_INV)!=-1: #TODD all cte should do this
         cluster_function=get_best_cluster_kmeans
-    if training_method  in [CHOSEN_COLD, CHOSEN_COLD_IP]: #TODO all chosen_cold should do this (incl BASIC)
+    if training_method.find(COLD)!=-1 and training_method.find(CHOSEN)!=-1: #TODO all chosen_cold should do this (incl BASIC)
         cluster_text_prompt=cold_prompt
         cluster_function=get_best_cluster_sorted
-    if training_method in [CHOSEN_HOT, CHOSEN_HOT_IP]:  #TODO all chosen_hot should do this (incl BASIC)
+    if training_method.find(HOT)!=-1 and training_method.find(CHOSEN)!=-1:  #TODO all chosen_hot should do this (incl BASIC)
         cluster_text_prompt=hot_prompt
         cluster_function=get_best_cluster_sorted
         negative=False
@@ -398,33 +393,7 @@ def train_and_evaluate(ip_adapter_image:Image,
 
     print(f"acceleerate device {accelerator.device}")
 
-    if not use_chosen_one:
-        pipeline=loop(
-            images=images,
-            text_prompt_list=text_prompt_list,
-            validation_prompt_list=validation_prompt_list,
-            ip_adapter_image=ip_adapter_image,
-            pipeline=pipeline,
-            start_epoch=0,
-            optimizer=optimizer,
-            accelerator=accelerator,
-            use_ip_adapter=use_ip_adapter,
-            random_text_prompt=random_text_prompt,
-            with_prior_preservation=with_prior_preservation,
-            prior_text_prompt_list=prior_text_prompt_list,
-            prior_images=prior_images,
-            prior_loss_weight=prior_loss_weight,
-            training_method=training_method,
-            epochs=epochs,
-            seed=seed,
-            timesteps_per_image=timesteps_per_image,
-            size=size,
-            train_batch_size=train_batch_size,
-            num_validation_images=num_validation_images,
-            noise_offset=noise_offset,
-            max_grad_norm=max_grad_norm
-        )
-    else:
+    if use_chosen_one:
         n_generated_img=chosen_one_args["n_generated_img"] # how many images to generate and then cluster
         convergence_scale=chosen_one_args["convergence_scale"] #when cluster distance < convergence * init_dist then we stop
         min_cluster_size=chosen_one_args["min_cluster_size"] #ignore clusters smaller than this aka d_min_c
@@ -487,6 +456,33 @@ def train_and_evaluate(ip_adapter_image:Image,
             iteration+=1
         del image_list
         del valid_image_list
+    else:
+        pipeline=loop(
+            images=images,
+            text_prompt_list=text_prompt_list,
+            validation_prompt_list=validation_prompt_list,
+            ip_adapter_image=ip_adapter_image,
+            pipeline=pipeline,
+            start_epoch=0,
+            optimizer=optimizer,
+            accelerator=accelerator,
+            use_ip_adapter=use_ip_adapter,
+            random_text_prompt=random_text_prompt,
+            with_prior_preservation=with_prior_preservation,
+            prior_text_prompt_list=prior_text_prompt_list,
+            prior_images=prior_images,
+            prior_loss_weight=prior_loss_weight,
+            training_method=training_method,
+            epochs=epochs,
+            seed=seed,
+            timesteps_per_image=timesteps_per_image,
+            size=size,
+            train_batch_size=train_batch_size,
+            num_validation_images=num_validation_images,
+            noise_offset=noise_offset,
+            max_grad_norm=max_grad_norm
+        )
+
     end=time.time()
     seconds=end-start
     hours=seconds/3600
