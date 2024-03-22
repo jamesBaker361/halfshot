@@ -167,6 +167,10 @@ def evaluate_pipeline(ip_adapter_image:Image,
     prompt_similarity_list=[]
     negative_prompt_similarity_list=[]
     target_prompt_similarity_list=[]
+    aesthetic_score_list=[]
+
+    for image in evaluation_image_list:
+        aesthetic_score_list.append(aesthetic_scorer(image))
 
     identity_consistency_list=[]
     for i in range(len(image_embed_list)):
@@ -179,6 +183,7 @@ def evaluate_pipeline(ip_adapter_image:Image,
             identity_consistency_list.append(np.dot(vector_j,vector_i)/(norm(vector_i)*norm(vector_j)))
     result_dict= {
         #"pipeline":pipeline,
+        "aesthetic_score": np.mean(aesthetic_score_list),
         "images":evaluation_image_list,
             "prompt_similarity":np.mean(prompt_similarity_list),
             "identity_consistency":np.mean(identity_consistency_list),
