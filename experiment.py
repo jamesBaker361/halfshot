@@ -28,6 +28,7 @@ import time
 from diffusers.utils.import_utils import is_xformers_available
 from packaging import version
 from safetensors import safe_open
+from aesthetic_reward import get_aesthetic_scorer
 import gc
 
 def get_trained_pipeline(
@@ -115,13 +116,14 @@ def evaluate_pipeline(ip_adapter_image:Image,
                       pipeline:StableDiffusionPipeline,
                       timesteps_per_image:int,
                       use_ip_adapter:bool,
-                      negative_prompt:str,
+                      cold_prompt:str,
                       target_prompt:str,
                       clip_processor:CLIPProcessor,
                        clip_model:CLIPModel )->dict:
     evaluation_image_list=[]
     generator=torch.Generator(pipeline.device)
     generator.manual_seed(123)
+    aesthetic_scorer=get_aesthetic_scorer()
     evaluation_prompt_list=[
         "a photo of {} at the beach",
         "a photo of {} in the jungle",
@@ -146,15 +148,15 @@ def evaluate_pipeline(ip_adapter_image:Image,
         prompt=evaluation_prompt.format(entity_name)
         print(f"eval prompt {prompt}")
         if use_ip_adapter:
-            eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,ip_adapter_image=ip_adapter_image,negative_prompt=negative_prompt).images[0]
+            eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,ip_adapter_image=ip_adapter_image,negative_prompt=cold_prompt).images[0]
         else:
-            eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,negative_prompt=negative_prompt).images[0]
+            eval_image=pipeline(prompt,num_inference_steps=timesteps_per_image,generator=generator,negative_prompt=cold_prompt).images[0]
         evaluation_image_list.append(eval_image)
-    if negative_prompt in ["", " "]:
-        negative_prompt=text_prompt
+    if cold_prompt in ["", " "]:
+        cold_prompt=text_prompt
     if target_prompt in ["", " "]:
         target_prompt=text_prompt
-    text_list=[text_prompt, negative_prompt, target_prompt]
+    text_list=[text_prompt, cold_prompt, target_prompt]
     clip_inputs=clip_processor(text=text_list, images=evaluation_image_list, return_tensors="pt", padding=True)
 
     outputs = clip_model(**clip_inputs)
@@ -285,9 +287,10 @@ def train_and_evaluate(ip_adapter_image:Image,
     for model in [vae,unet,text_encoder]:
         model.requires_grad_(False)
         #set everything to not be trainable by default
-    unet,text_encoder,vae,tokenizer,clip_model,clip_processor, vit_processor, vit_model = accelerator.prepare(
-        unet,text_encoder,vae,tokenizer,clip_model,clip_processor, vit_processor, vit_model
+    unet,text_encoder,vae,tokenizer = accelerator.prepare(
+        unet,text_encoder,vae,tokenizer
     )
+    #clip_processor, vit_processor, vit_model=accelerator.prepare(clip_model,clip_processor, vit_processor, vit_model)
     pipeline("nothing",num_inference_steps=2,safety_checker=None) #if we dont do this the properties wont instantiate correctly???
     trainable_parameters=[]
     with_prior_preservation=False
