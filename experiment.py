@@ -424,10 +424,10 @@ def train_and_evaluate(ip_adapter_image:Image,
             valid_image_list, pairwise_distances=cluster_function(image_list,
                                                                   n_clusters, 
                                                                   min_cluster_size,
+                                                                  vit_processor,vit_model,
                                                                   cluster_text_prompt,
                                                                   retain_fraction,
-                                                                  negative,clip_processor,clip_model,
-                                                                  vit_processor,vit_model)
+                                                                  negative,clip_processor,clip_model)
             print(f"iteration {iteration} pairwise distances {pairwise_distances} vs target {convergence_scale*init_dist}")
             if not random_text_prompt:
                 text_prompt_list=text_prompt_list*len(valid_image_list)
