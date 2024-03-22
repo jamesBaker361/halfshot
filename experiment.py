@@ -300,6 +300,9 @@ def train_and_evaluate(ip_adapter_image:Image,
     cluster_text_prompt=description_prompt
     prior_images=[]
     images=[]
+    negative_prompt=""
+    if training_method.find(COLD)!=-1 and training_method.find(BASIC)==-1:
+        negative_prompt=cold_prompt
     if training_method.find(BASIC)==-1 and training_method.find(HOT) !=-1:
         description_prompt+=hot_prompt
     if training_method.find(REWARD)!=-1:
@@ -314,7 +317,7 @@ def train_and_evaluate(ip_adapter_image:Image,
         use_ip_adapter=True
         pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name=ip_adapter_weight_name)
         images=[
-            pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None,num_inference_steps=timesteps_per_image, ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_image)
+            pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=timesteps_per_image, ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_image)
         ]
     if training_method.find(CHOSEN)!=-1 or training_method.find(CHOSEN_TEX_INV)!=-1: #TODO all chosen AND cte should do this- might be redundant with stuff in tex inv
         use_chosen_one=True
@@ -343,15 +346,15 @@ def train_and_evaluate(ip_adapter_image:Image,
         prior_text_prompt_list=[initializer_token]*n_image
     if training_method.find(DB_MULTI)!=-1 and training_method.find(IP)==-1:
         prior_images=[
-            pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None, num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
+            pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None, num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
         ]
     if training_method.find(DB_MULTI)!=-1 and training_method.find(IP)!=-1:
         prior_images=[
-            pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None,ip_adapter_image=ip_adapter_image, num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
+            pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,ip_adapter_image=ip_adapter_image, num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
         ]
     if training_method.find(CHOSEN)==-1 and training_method.find(CHOSEN_TEX_INV)==-1: #TODO everything but chosen should do this
         images=[
-            pipeline(description_prompt,negative_prompt=cold_prompt,safety_checker=None,num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
+            pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
         ]
     if training_method.find(UNET)!=-1: #TODO all uNet should do this except for reward
         unet=prepare_unet(unet)
@@ -405,10 +408,10 @@ def train_and_evaluate(ip_adapter_image:Image,
         n_clusters=n_generated_img // target_cluster_size
         if use_ip_adapter:
             image_list=[
-                pipeline(description_prompt,negative_prompt=cold_prompt,num_inference_steps=timesteps_per_image,safety_checker=None,ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_generated_img)]
+                pipeline(description_prompt,negative_prompt=negative_prompt,num_inference_steps=timesteps_per_image,safety_checker=None,ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_generated_img)]
         else:
             image_list=[
-                pipeline(description_prompt,negative_prompt=cold_prompt,num_inference_steps=timesteps_per_image,safety_checker=None).images[0] for _ in range(n_generated_img)]
+                pipeline(description_prompt,negative_prompt=negative_prompt,num_inference_steps=timesteps_per_image,safety_checker=None).images[0] for _ in range(n_generated_img)]
         print("generated initial sets of images")
         last_hidden_states=get_hidden_states(image_list,vit_processor,vit_model)
         print("last hidden staes")
