@@ -320,7 +320,7 @@ def train_and_evaluate(ip_adapter_image:Image,
         use_chosen_one=True
     if training_method.find(CHOSEN)!=-1:
         chosen_one_args["n_generated_img"]=int(chosen_one_args["n_generated_img"]/retain_fraction)
-    if training_method.find(DB_MULTI)!=-1: #TODO all db_multi should do this eexcept for reward
+    if training_method.find(DB_MULTI)!=-1 and training_method.find(REWARD)==-1: #TODO all db_multi should do this eexcept for reward
         text_encoder_target_modules=["q_proj", "v_proj"]
         text_encoder_config=LoraConfig(
             r=8,
