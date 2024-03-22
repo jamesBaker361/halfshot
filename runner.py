@@ -93,7 +93,7 @@ def main(args):
             "max_iterations":args.epochs,
             "target_cluster_size":args.target_cluster_size
     }
-    metric_list=["prompt_similarity","identity_consistency","negative_prompt_similarity","target_prompt_similarity"]
+    metric_list=["prompt_similarity","identity_consistency","negative_prompt_similarity","target_prompt_similarity","aesthetic_score"]
     training_method_list=training_method_suite_dict[args.training_method_suite]
     columns=["method","label"]+metric_list
     data=[]
