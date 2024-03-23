@@ -14,6 +14,7 @@ from huggingface_hub import hf_hub_download, ModelCard, upload_file
 from datasets import Dataset
 from experiment import prepare_unet_from_path
 from accelerate import Accelerator
+import datetime
 
 parser=argparse.ArgumentParser()
 parser.add_argument("--n_img",type=int,default=100,help="how many images to generate for each class")
@@ -75,4 +76,7 @@ if __name__=='__main__':
             print(slurm_var, os.environ[slurm_var])
         except:
             print(slurm_var, "doesnt exist")
+    current_date_time = datetime.datetime.now()
+    formatted_date_time = current_date_time.strftime("%Y-%m-%d %H:%M:%S")
+    print("Formatted Date and Time:", formatted_date_time)
     main(args)

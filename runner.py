@@ -16,6 +16,7 @@ from experiment import train_and_evaluate
 from datasets import Dataset
 import memray
 import time
+import datetime
 '''
 image=Image.open("file.jpg")
 text_prompt="a blonde woman"
@@ -173,6 +174,9 @@ if __name__=='__main__':
             print(slurm_var, os.environ[slurm_var])
         except:
             print(slurm_var, "doesnt exist")
+    current_date_time = datetime.datetime.now()
+    formatted_date_time = current_date_time.strftime("%Y-%m-%d %H:%M:%S")
+    print("Formatted Date and Time:", formatted_date_time)
     print(args)
     main(args)
     print("runner totally all done :)))")
