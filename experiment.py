@@ -296,8 +296,7 @@ def train_and_evaluate(ip_adapter_image:Image,
     use_ip_adapter=False
     use_chosen_one=False
     random_text_prompt=False
-    use_db=False
-    entity_name=description_prompt
+    entity_name=NEW_TOKEN
     negative=True
     cluster_text_prompt=description_prompt
     prior_images=[]
