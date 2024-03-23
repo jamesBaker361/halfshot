@@ -111,7 +111,6 @@ def main(args):
         label=str(row["label"])
         src_dict["label"].append(label)
         text_prompt=row["caption"]+" "+args.suffix
-        prior_image_list=[row["PRIOR_{}".format(f)] for f in range(5)]
         if args.img_type=="splash":
             ip_adapter_image=splash
         elif args.img_type=="tile":
