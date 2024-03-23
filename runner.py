@@ -175,3 +175,4 @@ if __name__=='__main__':
             print(slurm_var, "doesnt exist")
     print(args)
     main(args)
+    print("runner totally all done :)))")
