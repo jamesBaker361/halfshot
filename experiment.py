@@ -365,9 +365,14 @@ def train_and_evaluate(ip_adapter_image:Image,
                 pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,ip_adapter_image=ip_adapter_image, num_inference_steps=timesteps_per_image).images[0] for _ in range(20)
             ]
     if training_method.find(CHOSEN)==-1 and training_method.find(CHOSEN_TEX_INV)==-1: #TODO everything but chosen should do this
-        images=[
-            pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
-        ]
+        if training_method.find(IP)==-1:
+            images=[
+                pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
+            ]
+        else:
+            images=[
+                pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=timesteps_per_image,ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_image)
+            ]
     if training_method.find(UNET)!=-1: #TODO all uNet should do this except for reward
         unet=prepare_unet(unet)
         text_prompt_list=[NEW_TOKEN]*n_image
