@@ -86,3 +86,5 @@ training_method_suite_dict={
     CHOSEN_COLD_IP: [CHOSEN_COLD_IP],
     LIGHT_SUITE: [TEX_INV, UNET]
 }
+
+TOKEN_LIST=[ "man "," woman "," boy "," girl "," male "," female "]
