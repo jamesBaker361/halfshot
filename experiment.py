@@ -33,16 +33,6 @@ import gc
 from datasets import load_dataset
 import random
 
-def get_trained_pipeline(
-        pipeline:StableDiffusionPipeline,
-        chosen_one:bool,
-        with_prior_preservation:bool,
-        use_ip_adapter:bool
-)->StableDiffusionPipeline:
-    loop_kwargs={}
-    return None
-
-
 def prepare_unet(unet,unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"]):
     config = LoraConfig(
         r=4,
