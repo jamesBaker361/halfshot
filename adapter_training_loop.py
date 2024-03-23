@@ -97,8 +97,8 @@ def loop(images: list,
 
                 # Get the text embedding for conditioning
                 encoder_hidden_states = text_encoder(batch[TEXT_INPUT_IDS])[0]
-                print('text_encoder(batch[TEXT_INPUT_IDS])',text_encoder(batch[TEXT_INPUT_IDS]))
-                print('encoder_hidden_states.size()',encoder_hidden_states.size())
+                #print('text_encoder(batch[TEXT_INPUT_IDS])',text_encoder(batch[TEXT_INPUT_IDS]))
+                #print('encoder_hidden_states.size()',encoder_hidden_states.size())
 
                 noise_pred = unet(noisy_latents, 
                                 timesteps, 
