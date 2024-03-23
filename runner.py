@@ -94,22 +94,20 @@ def main(args):
             "target_cluster_size":args.target_cluster_size
     }
     metric_list=["prompt_similarity","identity_consistency","negative_prompt_similarity","target_prompt_similarity","aesthetic_score"]
-    training_method_list=training_method_suite_dict[args.training_method_suite]
     columns=["method","label"]+metric_list
     data=[]
     dataset=load_dataset(args.dataset,split="train")
     src_dict={
         "label":[]
     }
-    for training_method in training_method_list:
-        for metric in metric_list:
-            src_dict[f"{training_method}_{metric}"]=[]
+    for metric in metric_list:
+        src_dict[f"{args.training_method}_{metric}"]=[]
     for i,row in enumerate(dataset):
         if i>args.limit:
             break
         splash=row["splash"]
         tile=row["tile"]
-        label=row["label"]
+        label=str(row["label"])
         src_dict["label"].append(label)
         text_prompt=row["caption"]+" "+args.suffix
         prior_image_list=[row["PRIOR_{}".format(f)] for f in range(5)]
@@ -127,7 +125,7 @@ def main(args):
                 adam_weight_decay=args.adam_weight_decay,
                 adam_epsilon=args.adam_epsilon,
                 n_image=args.n_prior,
-                training_method=training_method,
+                training_method=args.training_method,
                 epochs=args.epochs,
                 prior_loss_weight=args.prior_loss_weight,
                 seed=args.seed,
@@ -142,17 +140,18 @@ def main(args):
                 retain_fraction=args.retain_fraction,
                 ip_adapter_weight_name=args.ip_adapter_weight_name,
                 chosen_one_args=chosen_one_args,
-                pretrained_lora_path=args.pretrained_lora_path
+                pretrained_lora_path=args.pretrained_lora_path,
+                label=label
             )
         for metric in metric_list:
-            src_dict[f"{training_method}_{metric}"].append(result_dict[metric])
-        data.append([training_method,label]+[result_dict[metric] for metric in metric_list])
+            src_dict[f"{args.training_method}_{metric}"].append(result_dict[metric])
+        data.append([args.training_method,label]+[result_dict[metric] for metric in metric_list])
         for i,image in enumerate(result_dict["images"]):
             os.makedirs(f"{args.image_dir}/{label}/",exist_ok=True)
-            path=f"{args.image_dir}/{label}/{training_method}_{i}.png"
+            path=f"{args.image_dir}/{label}/{args.training_method}_{i}.png"
             image.save(path)
             accelerator.log({
-                f"{label}/{training_method}_{i}":wandb.Image(path)
+                f"{label}/{args.training_method}_{i}":wandb.Image(path)
             })
         del result_dict
         time.sleep(args.cooldown)
