@@ -73,10 +73,10 @@ def loop(images: list,
     for e in range(start_epoch, epochs):
         train_loss = 0.0
         for step,batch in enumerate(dataloader):
-            with accelerator.accumulate(unet):
+            with accelerator.accumulate(unet,text_encoder):
                 if use_ip_adapter:
                     image_embeds = pipeline.prepare_ip_adapter_image_embeds(
-                            ip_adapter_image, accelerator.device, train_batch_size)
+                            ip_adapter_image, accelerator.device, 1)
                     added_cond_kwargs = {"image_embeds": image_embeds}
                 latents = vae.encode(batch[IMAGES].to(dtype=weight_dtype)).latent_dist.sample()
                 latents = latents * vae.config.scaling_factor
@@ -97,6 +97,8 @@ def loop(images: list,
 
                 # Get the text embedding for conditioning
                 encoder_hidden_states = text_encoder(batch[TEXT_INPUT_IDS])[0]
+                print('text_encoder(batch[TEXT_INPUT_IDS])',text_encoder(batch[TEXT_INPUT_IDS]))
+                print('encoder_hidden_states.size()',encoder_hidden_states.size())
 
                 noise_pred = unet(noisy_latents, 
                                 timesteps, 
