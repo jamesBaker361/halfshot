@@ -30,6 +30,8 @@ from packaging import version
 from safetensors import safe_open
 from aesthetic_reward import get_aesthetic_scorer
 import gc
+from datasets import load_dataset
+import random
 
 def get_trained_pipeline(
         pipeline:StableDiffusionPipeline,
@@ -78,16 +80,16 @@ def prepare_unet_from_path(unet,weight_path:str,trainable_modules:list):
 
 def get_initializer_token(text_prompt:str)->str:
     initializer_token=""
-    for token in [ "man "," woman "," boy "," girl "]:
+    for token in [ " man "," woman "," boy "," girl "]:
         if text_prompt.find(token)!=-1:
             initializer_token=token
     if initializer_token=="":
         initializer_token="character"
-    return initializer_token
+    return initializer_token.strip()
 
 def prepare_textual_inversion(text_prompt:str, tokenizer:object,text_encoder:object):
     initializer_token=""
-    for token in [ "man "," woman "," boy "," girl "]:
+    for token in TOKEN_LIST:
         if text_prompt.find(token)!=-1:
             initializer_token=token
     if initializer_token=="":
@@ -170,7 +172,7 @@ def evaluate_pipeline(ip_adapter_image:Image,
     aesthetic_score_list=[]
 
     for image in evaluation_image_list:
-        aesthetic_score_list.append(aesthetic_scorer(image))
+        aesthetic_score_list.append(aesthetic_scorer(image).cpu().numpy()[0])
 
     identity_consistency_list=[]
     for i in range(len(image_embed_list)):
@@ -259,7 +261,8 @@ def train_and_evaluate(ip_adapter_image:Image,
                         retain_fraction:float,
                         ip_adapter_weight_name:str,
                         chosen_one_args:dict,
-                        pretrained_lora_path:str
+                        pretrained_lora_path:str,
+                        label:str
                        )->dict:
     """
     init_image_list= the images we are starting with
@@ -303,6 +306,7 @@ def train_and_evaluate(ip_adapter_image:Image,
     use_ip_adapter=False
     use_chosen_one=False
     random_text_prompt=False
+    use_db=False
     entity_name=description_prompt
     negative=True
     cluster_text_prompt=description_prompt
@@ -331,6 +335,21 @@ def train_and_evaluate(ip_adapter_image:Image,
         use_chosen_one=True
     if training_method.find(CHOSEN)!=-1:
         chosen_one_args["n_generated_img"]=int(chosen_one_args["n_generated_img"]/retain_fraction)
+    if training_method.find(DB_MULTI)!=-1:
+        with_prior_preservation=True
+        text_prompt_list=[NEW_TOKEN]*n_image
+        entity_name=NEW_TOKEN
+        validation_prompt_list=text_prompt_list
+        initializer_token=get_initializer_token(description_prompt)
+        prior_text_prompt_list=[initializer_token]*n_image
+        prior_dataset="jlbaker361/prior-"
+        for flavor in [COLD,HOT,REWARD]:
+            if training_method.find(flavor)!=-1:
+                prior_dataset+=flavor
+                break
+        if timesteps_per_image==50:
+            prior_dataset+="-50"
+        print("prior_dataset",prior_dataset)
     if training_method.find(DB_MULTI)!=-1 and training_method.find(REWARD)==-1: #TODO all db_multi should do this eexcept for reward
         text_encoder_target_modules=["q_proj", "v_proj"]
         text_encoder_config=LoraConfig(
@@ -346,20 +365,15 @@ def train_and_evaluate(ip_adapter_image:Image,
 
         unet_target_modules= ["to_q", "to_v", "query", "value"]
         unet=prepare_unet(unet,unet_target_modules=unet_target_modules)
-        with_prior_preservation=True
-        text_prompt_list=[NEW_TOKEN]*n_image
-        entity_name=NEW_TOKEN
-        validation_prompt_list=text_prompt_list
-        initializer_token=get_initializer_token(description_prompt)
-        prior_text_prompt_list=[initializer_token]*n_image
     if training_method.find(DB_MULTI)!=-1 and training_method.find(IP)==-1:
-        prior_images=[
-            pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None, num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
-        ]
+        prior_image_mega_list=[row[initializer_token] for row in load_dataset(prior_dataset,split="train")]
     if training_method.find(DB_MULTI)!=-1 and training_method.find(IP)!=-1:
-        prior_images=[
-            pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,ip_adapter_image=ip_adapter_image, num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
-        ]
+        try:
+            prior_image_mega_list=load_dataset(prior_dataset+f"_{label}",split="train")[initializer_token]
+        except:
+            prior_image_mega_list=[
+                pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,ip_adapter_image=ip_adapter_image, num_inference_steps=timesteps_per_image).images[0] for _ in range(20)
+            ]
     if training_method.find(CHOSEN)==-1 and training_method.find(CHOSEN_TEX_INV)==-1: #TODO everything but chosen should do this
         images=[
             pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
@@ -470,6 +484,36 @@ def train_and_evaluate(ip_adapter_image:Image,
             iteration+=1
         del image_list
         del valid_image_list
+    elif with_prior_preservation:
+        for e in range(epochs):
+            print("len(prior_image_mega_list)",len(prior_image_mega_list))
+            print("n_image",n_image)
+            prior_images=random.sample(prior_image_mega_list,n_image)
+            pipeline=loop(
+                images=images,
+                text_prompt_list=text_prompt_list,
+                validation_prompt_list=validation_prompt_list,
+                ip_adapter_image=ip_adapter_image,
+                pipeline=pipeline,
+                start_epoch=0,
+                optimizer=optimizer,
+                accelerator=accelerator,
+                use_ip_adapter=use_ip_adapter,
+                random_text_prompt=random_text_prompt,
+                with_prior_preservation=with_prior_preservation,
+                prior_text_prompt_list=prior_text_prompt_list,
+                prior_images=prior_images,
+                prior_loss_weight=prior_loss_weight,
+                training_method=training_method,
+                epochs=1,
+                seed=seed,
+                timesteps_per_image=timesteps_per_image,
+                size=size,
+                train_batch_size=train_batch_size,
+                num_validation_images=num_validation_images,
+                noise_offset=noise_offset,
+                max_grad_norm=max_grad_norm
+            )
     else:
         pipeline=loop(
             images=images,
