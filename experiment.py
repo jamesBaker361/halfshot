@@ -341,30 +341,30 @@ def train_and_evaluate(ip_adapter_image:Image,
         if timesteps_per_image==50:
             prior_dataset+="-50"
         print("prior_dataset",prior_dataset)
-    if training_method.find(DB_MULTI)!=-1 and training_method.find(REWARD)==-1: #TODO all db_multi should do this eexcept for reward
-        text_encoder_target_modules=["q_proj", "v_proj"]
-        text_encoder_config=LoraConfig(
-            r=8,
-            lora_alpha=32,
-            target_modules=text_encoder_target_modules,
-            lora_dropout=0.0
-        )
-        text_encoder=get_peft_model(text_encoder,text_encoder_config)
-        text_encoder.train()
-        print("text encoder parameters")
-        text_encoder.print_trainable_parameters()
+        if training_method.find(REWARD)==-1: #TODO all db_multi should do this eexcept for reward
+            text_encoder_target_modules=["q_proj", "v_proj"]
+            text_encoder_config=LoraConfig(
+                r=8,
+                lora_alpha=32,
+                target_modules=text_encoder_target_modules,
+                lora_dropout=0.0
+            )
+            text_encoder=get_peft_model(text_encoder,text_encoder_config)
+            text_encoder.train()
+            print("text encoder parameters")
+            text_encoder.print_trainable_parameters()
 
-        unet_target_modules= ["to_q", "to_v", "query", "value"]
-        unet=prepare_unet(unet,unet_target_modules=unet_target_modules)
-    if training_method.find(DB_MULTI)!=-1 and training_method.find(IP)==-1:
-        prior_image_mega_list=[row[initializer_token] for row in load_dataset(prior_dataset,split="train")]
-    if training_method.find(DB_MULTI)!=-1 and training_method.find(IP)!=-1:
-        try:
-            prior_image_mega_list=load_dataset(prior_dataset+f"_{label}",split="train")[initializer_token]
-        except:
-            prior_image_mega_list=[
-                pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,ip_adapter_image=ip_adapter_image, num_inference_steps=timesteps_per_image).images[0] for _ in range(20)
-            ]
+            unet_target_modules= ["to_q", "to_v", "query", "value"]
+            unet=prepare_unet(unet,unet_target_modules=unet_target_modules)
+        if training_method.find(IP)==-1:
+            prior_image_mega_list=[row[initializer_token] for row in load_dataset(prior_dataset,split="train")]
+        if training_method.find(IP)!=-1:
+            try:
+                prior_image_mega_list=load_dataset(prior_dataset+f"_{label}",split="train")[initializer_token]
+            except:
+                prior_image_mega_list=[
+                    pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,ip_adapter_image=ip_adapter_image, num_inference_steps=timesteps_per_image).images[0] for _ in range(20)
+                ]
     if training_method.find(CHOSEN)==-1 and training_method.find(CHOSEN_TEX_INV)==-1: #TODO everything but chosen should do this
         if training_method.find(IP)==-1:
             images=[
