@@ -27,6 +27,7 @@ parser.add_argument("--pretrained_lora_path",type=str, default="jlbaker361/test-
 def main(args):
     print(args)
     prior_name_list=TOKEN_LIST+["character"]
+    prior_name_list=[p.strip() for p in prior_name_list]
 
     src_dict={
         prior:[] for prior in prior_name_list
@@ -44,7 +45,6 @@ def main(args):
     unet,vae,text_encoder=accelerator.prepare(unet,vae,text_encoder)
     for _ in range(args.n_img):
         for prior in prior_name_list:
-            print(prior)
             prompt=prior.replace("_"," ")
             if args.flavor==COLD:
                 image=pipeline(prompt,num_inference_steps=args.num_inference_steps,negative_prompt=NEGATIVE_PROMPT,safety_checker=None).images[0]
