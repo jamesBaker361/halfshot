@@ -314,7 +314,9 @@ def train_and_evaluate(ip_adapter_image:Image,
         if training_method in [DB_MULTI_REWARD_IP, DB_MULTI_REWARD]:
             trainable_modules=["to_q","to_v"]
         unet=prepare_unet_from_path(unet, weight_path,trainable_modules)
+        print(f"loaded from {pretrained_lora_path}")
     if training_method.find(IP)!=-1:
+        train_batch_size=min(train_batch_size,2) #accelerate can be weird if batch size is too big with ip adapter
         use_ip_adapter=True
         pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="models", weight_name=ip_adapter_weight_name)
         images=[
