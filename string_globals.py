@@ -87,4 +87,4 @@ training_method_suite_dict={
     LIGHT_SUITE: [TEX_INV, UNET]
 }
 
-TOKEN_LIST=[ "man "," woman "," boy "," girl "," male "," female "]
+TOKEN_LIST=[ " man "," woman "," boy "," girl "," male "," female "]
