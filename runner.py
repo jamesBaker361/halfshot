@@ -82,6 +82,7 @@ parser.add_argument("--n_prior",type=int,default=5)
 parser.add_argument("--pretrained_lora_path",type=str,default="jlbaker361/test-ddpo-runway")
 parser.add_argument("--cooldown",type=float,default=10.0,help="time to sleep between training methods, maybe helps to reduce memory usage")
 parser.add_argument("--image_dir",type=str,default="/scratch/jlb638/faceip")
+parser.add_argument("--subfolder",type=str,help="subfolder for reward model",default="checkpoint_10")
 
 def main(args):
     os.makedirs(args.image_dir,exist_ok=True)
@@ -141,7 +142,8 @@ def main(args):
                 ip_adapter_weight_name=args.ip_adapter_weight_name,
                 chosen_one_args=chosen_one_args,
                 pretrained_lora_path=args.pretrained_lora_path,
-                label=label
+                label=label,
+                subfolder=args.subfolder
             )
         for metric in metric_list:
             src_dict[f"{args.training_method}_{metric}"].append(result_dict[metric])

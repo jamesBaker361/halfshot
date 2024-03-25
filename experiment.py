@@ -252,7 +252,8 @@ def train_and_evaluate(ip_adapter_image:Image,
                         ip_adapter_weight_name:str,
                         chosen_one_args:dict,
                         pretrained_lora_path:str,
-                        label:str
+                        label:str,
+                        subfolder:str
                        )->dict:
     """
     init_image_list= the images we are starting with
@@ -307,7 +308,7 @@ def train_and_evaluate(ip_adapter_image:Image,
     if training_method.find(BASIC)==-1 and training_method.find(HOT) !=-1:
         description_prompt+=hot_prompt
     if training_method.find(REWARD)!=-1:
-        weight_path=hf_hub_download(repo_id=pretrained_lora_path,filename="pytorch_lora_weights.safetensors", repo_type="model")
+        weight_path=hf_hub_download(repo_id=pretrained_lora_path,subfolder=subfolder,filename="pytorch_lora_weights.safetensors", repo_type="model")
         trainable_modules=["to_k", "to_q", "to_v", "to_out.0"]
         if training_method in [TEX_INV_REWARD, TEX_INV_REWARD_IP]:
             trainable_modules=[]
