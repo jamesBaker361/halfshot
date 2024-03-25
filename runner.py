@@ -77,7 +77,7 @@ parser.add_argument("--suffix",type=str,help="suffix to append to base text prom
 parser.add_argument("--img_type",type=str,default="tile",help="whether to use splash or tile")
 parser.add_argument("--prior_loss_weight",type=float,default=0.5,help="weight for prior preservation")
 parser.add_argument("--dest_dataset",type=str,default="jlbaker361/test_chosen_runner",help="destination dataset to push results")
-parser.add_argument("--ip_adapter_weight_name",type=str,default="ip-adapter-plus-face_sd15.bin")
+parser.add_argument("--ip_adapter_weight_name",type=str,default="ip-adapter_sd15_light.bin")
 parser.add_argument("--n_prior",type=int,default=5)
 parser.add_argument("--pretrained_lora_path",type=str,default="jlbaker361/test-ddpo-runway")
 parser.add_argument("--cooldown",type=float,default=10.0,help="time to sleep between training methods, maybe helps to reduce memory usage")
