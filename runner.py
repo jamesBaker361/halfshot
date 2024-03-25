@@ -13,7 +13,9 @@ from datasets import load_dataset
 import wandb
 from string_globals import *
 from experiment import train_and_evaluate
+from huggingface_hub import hf_hub_download, ModelCard, upload_file
 from datasets import Dataset
+import numpy as np
 import memray
 import time
 import datetime
@@ -103,7 +105,7 @@ def main(args):
         "label":[]
     }
     for metric in metric_list:
-        src_dict[f"{args.training_method}_{metric}"]=[]
+        src_dict[f"{metric}"]=[]
     for i,row in enumerate(dataset):
         if i>args.limit:
             break
@@ -146,7 +148,7 @@ def main(args):
                 subfolder=args.subfolder
             )
         for metric in metric_list:
-            src_dict[f"{args.training_method}_{metric}"].append(result_dict[metric])
+            src_dict[f"{metric}"].append(result_dict[metric])
         data.append([args.training_method,label]+[result_dict[metric] for metric in metric_list])
         for i,image in enumerate(result_dict["images"]):
             os.makedirs(f"{args.image_dir}/{label}/",exist_ok=True)
@@ -159,6 +161,19 @@ def main(args):
         time.sleep(args.cooldown)
         print(src_dict)
         Dataset.from_dict(src_dict).push_to_hub(args.dest_dataset)
+        model_card_content=f"""
+        method: {args.training_method} \n
+        num_inference_steps: {args.timesteps_per_image}\n
+        """
+        for metric in metric_list:
+            mean=np.mean(src_dict[metric])
+            model_card_content+="{metric} : {mean} \n"
+        with open("tmp_prior.md","w+") as file:
+            file.write(model_card_content)
+        upload_file(path_or_fileobj="tmp_prior.md", 
+                    path_in_repo="README.md",
+                    repo_id=args.dest_dataset,
+                    repo_type="dataset")
     accelerator.get_tracker("wandb").log({
         "result_table":wandb.Table(columns=columns,data=data)
         })
