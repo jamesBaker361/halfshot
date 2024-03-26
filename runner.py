@@ -81,7 +81,7 @@ parser.add_argument("--prior_loss_weight",type=float,default=0.5,help="weight fo
 parser.add_argument("--dest_dataset",type=str,default="jlbaker361/test_chosen_runner",help="destination dataset to push results")
 parser.add_argument("--ip_adapter_weight_name",type=str,default="ip-adapter_sd15_light.bin")
 parser.add_argument("--n_prior",type=int,default=5)
-parser.add_argument("--pretrained_lora_path",type=str,default="jlbaker361/test-ddpo-runway")
+parser.add_argument("--pretrained_lora_path",type=str,default="jlbaker361/ddpo-runway-aesthetic-light")
 parser.add_argument("--cooldown",type=float,default=10.0,help="time to sleep between training methods, maybe helps to reduce memory usage")
 parser.add_argument("--image_dir",type=str,default="/scratch/jlb638/faceip")
 parser.add_argument("--subfolder",type=str,help="subfolder for reward model",default="checkpoint_10")
@@ -97,7 +97,6 @@ def main(args):
             "max_iterations":args.epochs,
             "target_cluster_size":args.target_cluster_size
     }
-    metric_list=["prompt_similarity","identity_consistency","negative_prompt_similarity","target_prompt_similarity","aesthetic_score"]
     columns=["method","label"]+metric_list
     data=[]
     dataset=load_dataset(args.dataset,split="train")
