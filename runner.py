@@ -19,6 +19,7 @@ import numpy as np
 import memray
 import time
 import datetime
+from make_json import update_files
 '''
 image=Image.open("file.jpg")
 text_prompt="a blonde woman"
@@ -183,6 +184,9 @@ def main(args):
         "result_table":wandb.Table(columns=columns,data=data)
         })
     print(f"pushed to {args.dest_dataset}")
+    current_datetime = datetime.now()
+    formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+    update_files(args.training_method,True,formatted_datetime,accelerator.get_tracker("wandb").run.get_url())
 
 
 if __name__=='__main__':
