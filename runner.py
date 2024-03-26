@@ -88,6 +88,12 @@ parser.add_argument("--subfolder",type=str,help="subfolder for reward model",def
 
 def main(args):
     os.makedirs(args.image_dir,exist_ok=True)
+    try:
+        print('torch.cuda.get_device_name()',torch.cuda.get_device_name())
+        print('torch.cuda.get_device_capability()',torch.cuda.get_device_capability())
+        print('torch.cuda.get_device_properties()',torch.cuda.get_device_properties())
+    except:
+        print("couldnt print cuda details")
     accelerator=Accelerator(log_with="wandb")
     accelerator.init_trackers(project_name="chosen_comparison")
     chosen_one_args={

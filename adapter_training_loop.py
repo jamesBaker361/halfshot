@@ -52,6 +52,12 @@ def loop(images: list,
     noise_offset: https://www.crosslabs.org//blog/diffusion-with-offset-noise
     '''
     print(f"begin training method  {training_method} on device {accelerator.device}")
+    try:
+        print('torch.cuda.get_device_name()',torch.cuda.get_device_name())
+        print('torch.cuda.get_device_capability()',torch.cuda.get_device_capability())
+        print('torch.cuda.get_device_properties()',torch.cuda.get_device_properties())
+    except:
+        print("couldnt print cuda details")
     tracker=accelerator.get_tracker("wandb")
     for i in range(num_validation_images):
         wandb.define_metric(f"{training_method}_img_{i}",step_metric="custom_step")

@@ -272,6 +272,12 @@ def train_and_evaluate(ip_adapter_image:Image,
         print("cleared cache!?!?")
     except:
         print("did not clear cache")
+    try:
+        print('experiment torch.cuda.get_device_name()',torch.cuda.get_device_name())
+        print('experiment torch.cuda.get_device_capability()',torch.cuda.get_device_capability())
+        print('experiment torch.cuda.get_device_properties()',torch.cuda.get_device_properties())
+    except:
+        print("couldnt print cuda details")
     pipeline=StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5")
     clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
     clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
