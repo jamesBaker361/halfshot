@@ -455,7 +455,7 @@ def train_and_evaluate(ip_adapter_image:Image,
                                                                   negative,clip_processor,clip_model)
             print(f"iteration {iteration} pairwise distances {pairwise_distances} vs target {convergence_scale*init_dist}")
             if not random_text_prompt:
-                text_prompt_list=text_prompt_list*len(valid_image_list)
+                text_prompt_list=[NEW_TOKEN]*len(valid_image_list)
             pipeline=loop(
                 images=valid_image_list,
                 text_prompt_list=text_prompt_list,
