@@ -155,10 +155,10 @@ def loop(images: list,
             generator = torch.Generator(device=accelerator.device)
             generator.manual_seed(seed)
 
-            path="tmp.png"
+            path=f"{training_method}_tmp.png"
             for i in range(num_validation_images):
                 val_prompt=validation_prompt_list[i %len(validation_prompt_list)]
-                print(f"{training_method}_img_{i} {val_prompt}")
+                print(f"validation {training_method}_img_{i} {val_prompt} saved at {path}")
                 added_cond_kwargs={}
                 if use_ip_adapter:
                     img=pipeline(val_prompt, num_inference_steps=timesteps_per_image, generator=generator,ip_adapter_image=ip_adapter_image,safety_checker=None).images[0]
