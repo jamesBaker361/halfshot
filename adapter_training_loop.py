@@ -65,6 +65,9 @@ def loop(images: list,
     vae=pipeline.vae
     text_encoder=pipeline.text_encoder
     dataloader=make_dataloader(images,text_prompt_list,prior_images,prior_text_prompt_list, tokenizer,size, train_batch_size,random_text_prompt)
+    print("len dataloader",len(dataloader))
+    print("len images ",len(images))
+    print("len text prompt list",len(text_prompt_list))
     unet=pipeline.unet
     lora_layers = filter(lambda p: p.requires_grad, unet.parameters()) #optimizer should already be listening to whatever layers we're optimzing
     unet,text_encoder,vae,tokenizer, optimizer, dataloader= accelerator.prepare(
