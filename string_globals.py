@@ -88,3 +88,4 @@ training_method_suite_dict={
 }
 
 TOKEN_LIST=[ " man "," woman "," boy "," girl "," male "," female "]
+metric_list=["prompt_similarity","identity_consistency","negative_prompt_similarity","target_prompt_similarity","aesthetic_score"]
