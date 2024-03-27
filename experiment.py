@@ -393,15 +393,16 @@ def train_and_evaluate(ip_adapter_image:Image,
         validation_prompt_list=[template.format(NEW_TOKEN) for template in imagenet_template_list]
     if training_method.find(CHOSEN_TEX_INV)!=-1: #TODD all cte should do this
         cluster_function=get_best_cluster_kmeans
-    if training_method.find(COLD)!=-1 and training_method.find(CHOSEN)!=-1: #TODO all chosen_cold should do this (incl BASIC)
-        cluster_text_prompt=cold_prompt
-        cluster_function=get_best_cluster_sorted
-    if training_method.find(HOT)!=-1 and training_method.find(CHOSEN)!=-1:  #TODO all chosen_hot should do this (incl BASIC)
-        cluster_text_prompt=hot_prompt
-        cluster_function=get_best_cluster_sorted
-        negative=False
-    if training_method.find(REWARD)!=-1 and training_method.find(CHOSEN)!=-1:
-        cluster_function=get_best_cluster_aesthetic
+    if training_method.find(CHOSEN)!=-1:
+        if training_method.find(COLD)!=-1: #TODO all chosen_cold should do this (incl BASIC)
+            cluster_text_prompt=cold_prompt
+            cluster_function=get_best_cluster_sorted
+        if training_method.find(HOT)!=-1:  #TODO all chosen_hot should do this (incl BASIC)
+            cluster_text_prompt=hot_prompt
+            cluster_function=get_best_cluster_sorted
+            negative=False
+        if training_method.find(REWARD)!=-1:
+            cluster_function=get_best_cluster_aesthetic
     for model in [vae,unet,text_encoder]:
         trainable_parameters+=[p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(
