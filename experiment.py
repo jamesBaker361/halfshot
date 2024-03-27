@@ -23,7 +23,7 @@ from string_globals import *
 from transformers import CLIPProcessor, CLIPModel
 import numpy as np
 from numpy.linalg import norm
-from clustering import get_hidden_states,get_best_cluster_kmeans,get_best_cluster_sorted,get_init_dist
+from clustering import get_hidden_states,get_best_cluster_kmeans,get_best_cluster_sorted,get_init_dist,get_best_cluster_aesthetic
 import time
 from diffusers.utils.import_utils import is_xformers_available
 from packaging import version
@@ -400,6 +400,8 @@ def train_and_evaluate(ip_adapter_image:Image,
         cluster_text_prompt=hot_prompt
         cluster_function=get_best_cluster_sorted
         negative=False
+    if training_method.find(REWARD)!=-1 and training_method.find(CHOSEN)!=-1:
+        cluster_function=get_best_cluster_aesthetic
     for model in [vae,unet,text_encoder]:
         trainable_parameters+=[p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(
