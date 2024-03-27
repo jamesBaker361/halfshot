@@ -1,5 +1,4 @@
 import os
-os.environ["TEST_ENV"]="true"
 import torch
 cache_dir="/scratch/jlb638/trans_cache"
 os.environ["TRANSFORMERS_CACHE"]=cache_dir
@@ -63,13 +62,7 @@ def main(args):
     for _ in range(args.n_img):
         for prior in prior_name_list:
             prompt=prior.replace("_"," ")
-            if args.flavor==COLD:
-                image=pipeline(prompt,num_inference_steps=args.num_inference_steps,negative_prompt=NEGATIVE_PROMPT,safety_checker=None).images[0]
-            elif args.flavor==HOT:
-                image=pipeline(prompt+LOL_SUFFIX,num_inference_steps=args.num_inference_steps,safety_checker=None).images[0]
-            else:
-                image=pipeline(prompt, num_inference_steps=args.num_inference_steps,safety_checker=None).images[0]
-            #image.save(f"{prior}.png")
+            image=generate_character_image(prompt,pipeline,args)
             src_dict[prior].append(image)
         Dataset.from_dict(src_dict).push_to_hub(args.dest_dataset)
     model_card_content=f"""
