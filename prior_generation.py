@@ -13,6 +13,7 @@ from diffusers import StableDiffusionPipeline
 from huggingface_hub import hf_hub_download, ModelCard, upload_file
 from datasets import Dataset
 from experiment import prepare_unet_from_path
+from facenet_pytorch import MTCNN
 from accelerate import Accelerator
 import datetime
 
@@ -25,6 +26,18 @@ parser.add_argument("--pretrained_lora_path",type=str, default="jlbaker361/ddpo-
 parser.add_argument("--subfolder",type=str,help="subfolder for reward model",default="checkpoint_10")
 
 
+mtcnn = MTCNN()
+def generate_character_image(prompt,pipeline,args):
+    if args.flavor==COLD:
+        image=pipeline(prompt,num_inference_steps=args.num_inference_steps,negative_prompt=NEGATIVE_PROMPT,safety_checker=None).images[0]
+    elif args.flavor==HOT:
+        image=pipeline(prompt+LOL_SUFFIX,num_inference_steps=args.num_inference_steps,safety_checker=None).images[0]
+    else:
+        image=pipeline(prompt, num_inference_steps=args.num_inference_steps,safety_checker=None).images[0]
+    
+    boxes, probs=mtcnn.detect(image)
+    if boxes is None or probs is None or len(boxes)==0 or len(probs)==0 or probs[0]<0.90:
+        return generate_character_image(prompt,pipeline,args)
 def main(args):
     print(args)
     prior_name_list=TOKEN_LIST+["character"]
