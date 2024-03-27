@@ -17,11 +17,12 @@ from accelerate import Accelerator
 import datetime
 
 parser=argparse.ArgumentParser()
-parser.add_argument("--n_img",type=int,default=100,help="how many images to generate for each class")
+parser.add_argument("--n_img",type=int,default=50,help="how many images to generate for each class")
 parser.add_argument("--flavor",type=str,default="hot",help="hot, cold or reward")
 parser.add_argument("--num_inference_steps",type=int,default=30)
 parser.add_argument("--dest_dataset",type=str,default="jlbaker361/prior")
-parser.add_argument("--pretrained_lora_path",type=str, default="jlbaker361/test-ddpo-runway")
+parser.add_argument("--pretrained_lora_path",type=str, default="jlbaker361/ddpo-runway-aesthetic-light")
+parser.add_argument("--subfolder",type=str,help="subfolder for reward model",default="checkpoint_10")
 
 
 def main(args):
@@ -38,7 +39,10 @@ def main(args):
     vae=pipeline.vae
     text_encoder=pipeline.text_encoder
     if args.flavor==REWARD:
-        weight_path=hf_hub_download(repo_id=args.pretrained_lora_path,filename="pytorch_lora_weights.safetensors", repo_type="model")
+        if args.subfolder is not None:
+            weight_path=hf_hub_download(repo_id=args.pretrained_lora_path,filename="pytorch_lora_weights.safetensors", repo_type="model",subfolder=args.subfolder)
+        else:
+            weight_path=hf_hub_download(repo_id=args.pretrained_lora_path,filename="pytorch_lora_weights.safetensors", repo_type="model")
         unet=prepare_unet_from_path(unet,weight_path,["to_k", "to_q", "to_v", "to_out.0"])
     for model in [unet,vae,text_encoder]:
         model.requires_grad_(False)
