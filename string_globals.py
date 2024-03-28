@@ -65,7 +65,7 @@ CHOSEN_TEX_INV_REWARD_IP=f"{CHOSEN_TEX_INV}_{REWARD}_{IP}"
 
 
 LOL_SUFFIX=" in the style of league of legends"
-NEGATIVE_PROMPT="blurry,text,low quality,logo,poorly drawn face,horror,mutation"
+NEGATIVE_PROMPT="blurry,text,low quality,logo,poorly drawn"
 
 CHOSEN_SUITE="chosen_suite"
 LIGHT_SUITE="light_suite"
@@ -87,5 +87,5 @@ training_method_suite_dict={
     LIGHT_SUITE: [TEX_INV, UNET]
 }
 
-TOKEN_LIST=[ " man "," woman "," boy "," girl "," male "," female "]
+TOKEN_LIST=[ " man "," woman "," boy "," girl "]
 metric_list=["prompt_similarity","identity_consistency","negative_prompt_similarity","target_prompt_similarity","aesthetic_score"]

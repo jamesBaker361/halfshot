@@ -15,6 +15,14 @@ from experiment import prepare_unet_from_path
 from facenet_pytorch import MTCNN
 from accelerate import Accelerator
 import datetime
+import random
+import string
+
+# Define the characters you want to include in the random string
+characters = string.ascii_letters + string.digits  # includes uppercase and lowercase letters, and digits
+
+# Specify the length of the random string
+length = 6
 
 parser=argparse.ArgumentParser()
 parser.add_argument("--n_img",type=int,default=50,help="how many images to generate for each class")
@@ -23,6 +31,8 @@ parser.add_argument("--num_inference_steps",type=int,default=30)
 parser.add_argument("--dest_dataset",type=str,default="jlbaker361/prior")
 parser.add_argument("--pretrained_lora_path",type=str, default="jlbaker361/ddpo-runway-aesthetic-light")
 parser.add_argument("--subfolder",type=str,help="subfolder for reward model",default="checkpoint_10")
+parser.add_argument("--threshold",type=float,default=0.5)
+parser.add_argument("--image_dir",type=str,default="/scratch/jlb638/prior/")
 
 
 mtcnn = MTCNN()
@@ -35,11 +45,15 @@ def generate_character_image(prompt,pipeline,args):
         image=pipeline(prompt, num_inference_steps=args.num_inference_steps,safety_checker=None).images[0]
     
     boxes, probs=mtcnn.detect(image)
-    if boxes is None or probs is None or len(boxes)==0 or len(probs)==0 or probs[0]<0.90:
+    if boxes is None or probs is None or len(boxes)==0 or len(probs)==0 or probs[0]<args.threshold:
+        random_string = ''.join(random.choice(characters) for _ in range(length))
+        print("no humans detected at ",random_string)
+        image.save(f"{args.image_dir}{prompt}_{random_string}.png")
         return generate_character_image(prompt,pipeline,args)
 def main(args):
     print(args)
-    prior_name_list=TOKEN_LIST+["character"]
+    os.makedirs(args.image_dir,exist_ok=True)
+    prior_name_list=TOKEN_LIST+["character"]+["person"]
     prior_name_list=[p.strip() for p in prior_name_list]
 
     src_dict={

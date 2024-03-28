@@ -82,6 +82,7 @@ def loop(images: list,
     for e in range(start_epoch, epochs):
         train_loss = 0.0
         for step,batch in enumerate(dataloader):
+            batch_size=batch[IMAGES].shape[0]
             with accelerator.accumulate(unet,text_encoder):
                 if use_ip_adapter:
                     image_embeds = pipeline.prepare_ip_adapter_image_embeds(
@@ -130,7 +131,7 @@ def loop(images: list,
                 else:
                     loss = F.mse_loss(noise_pred.float(), noise.float(), reduction="mean")
 
-                avg_loss = accelerator.gather(loss.repeat(train_batch_size)).mean()
+                avg_loss = accelerator.gather(loss.repeat(batch_size)).mean()
                 train_loss += avg_loss.item()
                 # Backpropagate
                 accelerator.backward(loss)

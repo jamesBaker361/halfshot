@@ -448,7 +448,7 @@ def train_and_evaluate(ip_adapter_image:Image,
         pairwise_distances=init_dist
         iteration=0
         while pairwise_distances>=convergence_scale*init_dist and iteration<max_iterations:
-            print("while loop")
+            print(f"while loop len(image_list)={len(image_list)} n_genertaed_img={n_generated_img}")
             valid_image_list, pairwise_distances=cluster_function(image_list,
                                                                   n_clusters, 
                                                                   min_cluster_size,
@@ -457,6 +457,7 @@ def train_and_evaluate(ip_adapter_image:Image,
                                                                   retain_fraction,
                                                                   negative,clip_processor,clip_model)
             print(f"iteration {iteration} pairwise distances {pairwise_distances} vs target {convergence_scale*init_dist}")
+            print(f"len(valid_image_list) {len(valid_image_list)}")
             if not random_text_prompt:
                 text_prompt_list=[NEW_TOKEN]*len(valid_image_list)
             pipeline=loop(
