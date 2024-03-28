@@ -33,21 +33,21 @@ import gc
 from datasets import load_dataset
 import random
 
-def prepare_unet(unet,unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"]):
+def prepare_unet(unet,unet_target_modules,adapter_name):
     config = LoraConfig(
         r=4,
-        lora_alpha=32,
+        lora_alpha=4,
         target_modules=unet_target_modules,
         lora_dropout=0.0,
         bias="none")
-    unet = get_peft_model(unet, config)
+    unet = get_peft_model(unet, config,adapter_name=adapter_name)
     unet.train()
     print("prepare unet trainable parameters")
     unet.print_trainable_parameters()
     return unet
 
-def prepare_unet_from_path(unet,weight_path:str,trainable_modules:list):
-    unet=prepare_unet(unet)
+def prepare_unet_from_path(unet,weight_path:str,unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"],lora_alpha=4):
+    unet=prepare_unet(unet,unet_target_modules,lora_alpha,"default")
     state_dict={}
     with safe_open(weight_path, framework="pt", device="cpu") as f:
         for key in f.keys():
@@ -55,16 +55,8 @@ def prepare_unet_from_path(unet,weight_path:str,trainable_modules:list):
     state_dict={
         "base_model.model."+k.replace("weight","default.weight"):v for k,v in state_dict.items()
     }
-    count=0
     unet.load_state_dict(state_dict,strict=False)
-    for (name,param) in unet.named_parameters():
-        if name in state_dict:
-            count+=1
-        param.requires_grad_(False)
-        for module_name in trainable_modules:
-            if name.find(module_name)!=-1 and name.find("default.weight")!=-1:
-                param.requires_grad_(True)
-    print(f"loaded {count} parameters in prepare_unet_from_path")
+    unet.requires_grad_(False)
     unet.print_trainable_parameters()
     return unet
 
@@ -309,19 +301,16 @@ def train_and_evaluate(ip_adapter_image:Image,
     prior_images=[]
     images=[]
     negative_prompt=""
-    if training_method.find(COLD)!=-1 and training_method.find(BASIC)==-1:
-        negative_prompt=cold_prompt
-    if training_method.find(BASIC)==-1 and training_method.find(HOT) !=-1:
-        description_prompt+=hot_prompt
-    if training_method.find(REWARD)!=-1:
-        weight_path=hf_hub_download(repo_id=pretrained_lora_path,subfolder=subfolder,filename="pytorch_lora_weights.safetensors", repo_type="model")
-        trainable_modules=["to_k", "to_q", "to_v", "to_out.0"]
-        if training_method in [TEX_INV_REWARD, TEX_INV_REWARD_IP]:
-            trainable_modules=[]
-        if training_method in [DB_MULTI_REWARD_IP, DB_MULTI_REWARD]:
-            trainable_modules=["to_q","to_v"]
-        unet=prepare_unet_from_path(unet, weight_path,trainable_modules)
-        print(f"loaded from {pretrained_lora_path}")
+    if training_method.find(BASIC)==-1:
+        if training_method.find(COLD)!=-1:
+            negative_prompt=cold_prompt
+        if training_method.find(HOT) !=-1:
+            description_prompt+=hot_prompt
+        if training_method.find(REWARD)!=-1:
+            weight_path=hf_hub_download(repo_id=pretrained_lora_path,subfolder=subfolder,filename="pytorch_lora_weights.safetensors", repo_type="model")
+            trainable_modules=["to_k", "to_q", "to_v", "to_out.0"]
+            unet=prepare_unet_from_path(unet, weight_path,trainable_modules)
+            print(f"loaded from {pretrained_lora_path}")
     if training_method.find(IP)!=-1:
         train_batch_size=min(train_batch_size,2) #accelerate can be weird if batch size is too big with ip adapter
         use_ip_adapter=True
@@ -348,21 +337,21 @@ def train_and_evaluate(ip_adapter_image:Image,
         if timesteps_per_image==50:
             prior_dataset+="-50"
         print("prior_dataset",prior_dataset)
-        if training_method.find(REWARD)==-1: #TODO all db_multi should do this eexcept for reward
-            text_encoder_target_modules=["q_proj", "v_proj"]
-            text_encoder_config=LoraConfig(
-                r=8,
-                lora_alpha=32,
-                target_modules=text_encoder_target_modules,
-                lora_dropout=0.0
-            )
-            text_encoder=get_peft_model(text_encoder,text_encoder_config)
-            text_encoder.train()
-            print("text encoder parameters")
-            text_encoder.print_trainable_parameters()
+        #if training_method.find(REWARD)==-1: #TODO all db_multi should do this eexcept for reward
+        text_encoder_target_modules=["q_proj", "v_proj"]
+        text_encoder_config=LoraConfig(
+            r=8,
+            lora_alpha=32,
+            target_modules=text_encoder_target_modules,
+            lora_dropout=0.0
+        )
+        text_encoder=get_peft_model(text_encoder,text_encoder_config)
+        text_encoder.train()
+        print("text encoder parameters")
+        text_encoder.print_trainable_parameters()
 
-            unet_target_modules= ["to_q", "to_v", "query", "value"]
-            unet=prepare_unet(unet,unet_target_modules=unet_target_modules)
+        unet_target_modules= ["to_q", "to_v", "query", "value"]
+        unet=prepare_unet(unet,unet_target_modules=unet_target_modules,adapter_name="trainable")
         if training_method.find(IP)==-1:
             prior_image_mega_list=[row[initializer_token] for row in load_dataset(prior_dataset,split="train")]
         if training_method.find(IP)!=-1:
