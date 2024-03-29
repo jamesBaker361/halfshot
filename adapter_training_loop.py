@@ -55,9 +55,16 @@ def loop(images: list,
     try:
         print('torch.cuda.get_device_name()',torch.cuda.get_device_name())
         print('torch.cuda.get_device_capability()',torch.cuda.get_device_capability())
-        print('torch.cuda.get_device_properties()',torch.cuda.get_device_properties())
+        current_device = torch.cuda.current_device()
+        gpu = torch.cuda.get_device_properties(current_device)
+        print(f"GPU Name: {gpu.name}")
+        print(f"GPU Memory Total: {gpu.total_memory / 1024**2} MB")
+        print(f"GPU Memory Free: {torch.cuda.memory_allocated(current_device) / 1024**2} MB")
+        print(f"GPU Memory Used: {torch.cuda.memory_reserved(current_device) / 1024**2} MB")
     except:
         print("couldnt print cuda details")
+    torch.cuda.empty_cache()
+    accelerator.free_memory()
     tracker=accelerator.get_tracker("wandb")
     for i in range(num_validation_images):
         wandb.define_metric(f"{training_method}_img_{i}",step_metric="custom_step")
@@ -79,10 +86,20 @@ def loop(images: list,
     weight_dtype=pipeline.dtype
     noise_scheduler = DDPMScheduler(num_train_timesteps=timesteps_per_image,clip_sample=False)
     global_step=0
+    try:
+        current_device = torch.cuda.current_device()
+        gpu = torch.cuda.get_device_properties(current_device)
+        print(f"GPU Name: {gpu.name}")
+        print(f"GPU Memory Total: {gpu.total_memory / 1024**2} MB")
+        print(f"GPU Memory Free: {torch.cuda.memory_allocated(current_device) / 1024**2} MB")
+        print(f"GPU Memory Used: {torch.cuda.memory_reserved(current_device) / 1024**2} MB")
+    except:
+        print("couldnt print gpu deets")
     for e in range(start_epoch, epochs):
         train_loss = 0.0
         for step,batch in enumerate(dataloader):
             batch_size=batch[IMAGES].shape[0]
+            print(f"batch size {batch_size}")
             with accelerator.accumulate(unet,text_encoder):
                 if use_ip_adapter:
                     image_embeds = pipeline.prepare_ip_adapter_image_embeds(
