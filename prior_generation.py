@@ -48,8 +48,10 @@ def generate_character_image(prompt,pipeline,args):
     if boxes is None or probs is None or len(boxes)==0 or len(probs)==0 or probs[0]<args.threshold:
         random_string = ''.join(random.choice(characters) for _ in range(length))
         print("no humans detected at ",random_string)
-        image.save(f"{args.image_dir}{prompt}_{random_string}.png")
+        #image.save(f"{args.image_dir}{prompt}_{random_string}.png")
         return generate_character_image(prompt,pipeline,args)
+    else:
+        return image
 def main(args):
     print(args)
     os.makedirs(args.image_dir,exist_ok=True)
