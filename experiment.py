@@ -33,10 +33,10 @@ import gc
 from datasets import load_dataset
 import random
 
-def prepare_unet(unet,unet_target_modules,adapter_name):
+def prepare_unet(unet,unet_target_modules,adapter_name,lora_alpha):
     config = LoraConfig(
         r=4,
-        lora_alpha=4,
+        lora_alpha=lora_alpha,
         target_modules=unet_target_modules,
         lora_dropout=0.0,
         bias="none")
@@ -47,7 +47,7 @@ def prepare_unet(unet,unet_target_modules,adapter_name):
     return unet
 
 def prepare_unet_from_path(unet,weight_path:str,unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"],lora_alpha=4):
-    unet=prepare_unet(unet,unet_target_modules,lora_alpha,"default")
+    unet=prepare_unet(unet,unet_target_modules,"default",lora_alpha=lora_alpha)
     state_dict={}
     with safe_open(weight_path, framework="pt", device="cpu") as f:
         for key in f.keys():
@@ -319,7 +319,22 @@ def train_and_evaluate(ip_adapter_image:Image,
             pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=timesteps_per_image, ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_image)
         ]
     if training_method.find(CHOSEN)!=-1 or training_method.find(CHOSEN_TEX_INV)!=-1: #TODO all chosen AND cte should do this- might be redundant with stuff in tex inv
+        text_encoder_target_modules=["q_proj", "v_proj","k_proj","out_proj"]
+        text_encoder_config=LoraConfig(
+            r=8,
+            lora_alpha=32,
+            target_modules=text_encoder_target_modules,
+            lora_dropout=0.0
+        )
+        text_encoder=get_peft_model(text_encoder,text_encoder_config,adapter_name="trainable")
+        text_encoder.train()
+        print("text encoder parameters")
+        text_encoder.print_trainable_parameters()
+        prepare_unet(unet, ["to_k", "to_q", "to_v", "to_out.0"],"trainable",16)
         use_chosen_one=True
+        text_prompt_list=[description_prompt]*len(valid_image_list)
+        entity_name=description_prompt
+        validation_prompt_list=[template.format(entity_name) for template in imagenet_template_list]
     if training_method.find(CHOSEN)!=-1:
         chosen_one_args["n_generated_img"]=int(chosen_one_args["n_generated_img"]/retain_fraction)
     if training_method.find(DB_MULTI)!=-1:
@@ -345,13 +360,13 @@ def train_and_evaluate(ip_adapter_image:Image,
             target_modules=text_encoder_target_modules,
             lora_dropout=0.0
         )
-        text_encoder=get_peft_model(text_encoder,text_encoder_config)
+        text_encoder=get_peft_model(text_encoder,text_encoder_config,adapter_name="trainable")
         text_encoder.train()
         print("text encoder parameters")
         text_encoder.print_trainable_parameters()
 
         unet_target_modules= ["to_q", "to_v", "query", "value"]
-        unet=prepare_unet(unet,unet_target_modules=unet_target_modules,adapter_name="trainable")
+        unet=prepare_unet(unet,unet_target_modules=unet_target_modules,adapter_name="trainable",lora_alpha=16)
         if training_method.find(IP)==-1:
             prior_image_mega_list=[row[initializer_token] for row in load_dataset(prior_dataset,split="train")]
         if training_method.find(IP)!=-1:
@@ -371,10 +386,10 @@ def train_and_evaluate(ip_adapter_image:Image,
                 pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=timesteps_per_image,ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_image)
             ]
     if training_method.find(UNET)!=-1: #TODO all uNet should do this except for reward
-        unet=prepare_unet(unet)
+        unet=prepare_unet(unet,unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"],adapter_name="trainable",lora_alpha=16)
         text_prompt_list=[NEW_TOKEN]*n_image
         validation_prompt_list=text_prompt_list
-    if training_method.find(TEX_INV)!=-1 or training_method.find(CHOSEN)!=-1 or training_method.find(CHOSEN_TEX_INV)!=-1: #TODO all chosen,cte,and tex_inv should do this
+    if training_method.find(TEX_INV)!=-1: # or training_method.find(CHOSEN)!=-1 or training_method.find(CHOSEN_TEX_INV)!=-1: #TODO all chosen,cte,and tex_inv should do this
         tokenizer,text_encoder=prepare_textual_inversion(description_prompt,tokenizer,text_encoder)
         entity_name=NEW_TOKEN
         text_prompt_list=[imagenet_template.format(entity_name) for imagenet_template in imagenet_template_list]
@@ -447,8 +462,6 @@ def train_and_evaluate(ip_adapter_image:Image,
                                                                   negative,clip_processor,clip_model)
             print(f"iteration {iteration} pairwise distances {pairwise_distances} vs target {convergence_scale*init_dist}")
             print(f"len(valid_image_list) {len(valid_image_list)}")
-            if not random_text_prompt:
-                text_prompt_list=[NEW_TOKEN]*len(valid_image_list)
             pipeline=loop(
                 images=valid_image_list,
                 text_prompt_list=text_prompt_list,
