@@ -66,7 +66,12 @@ def get_initializer_token(text_prompt:str)->str:
         if text_prompt.find(token)!=-1:
             initializer_token=token
     if initializer_token=="":
-        initializer_token="character"
+        if text_prompt.find(" female ")!=-1:
+            initializer_token="woman"
+        elif text_prompt.find(" male ")!=-1:
+            initializer_token="man"
+        else:
+            initializer_token="person"
     return initializer_token.strip()
 
 def prepare_textual_inversion(text_prompt:str, tokenizer:object,text_encoder:object):
