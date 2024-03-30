@@ -327,17 +327,19 @@ def train_and_evaluate(ip_adapter_image:Image,
         ]
     if training_method.find(CHOSEN)!=-1 or training_method.find(CHOSEN_TEX_INV)!=-1: #TODO all chosen AND cte should do this- might be redundant with stuff in tex inv
         #text_encoder_target_modules=args.text_encoder_target_modules #"k_proj","out_proj"]
-        text_encoder_config=LoraConfig(
-            r=8,
-            lora_alpha=32,
-            target_modules=text_encoder_target_modules,
-            lora_dropout=0.0
-        )
-        text_encoder=get_peft_model(text_encoder,text_encoder_config,adapter_name="trainable")
-        text_encoder.train()
-        print("text encoder parameters")
+        if len(text_encoder_target_modules)>0:
+            text_encoder_config=LoraConfig(
+                r=8,
+                lora_alpha=32,
+                target_modules=text_encoder_target_modules,
+                lora_dropout=0.0
+            )
+            text_encoder=get_peft_model(text_encoder,text_encoder_config,adapter_name="trainable")
+            text_encoder.train()
+            print("text encoder parameters")
         text_encoder.get_input_embeddings().requires_grad_(train_embeddings)
-        text_encoder.print_trainable_parameters()
+        if len(text_encoder_target_modules)>0:
+            text_encoder.print_trainable_parameters()
         prepare_unet(unet, ["to_k", "to_q", "to_v", "to_out.0"],"trainable",16)
         use_chosen_one=True
         entity_name=description_prompt
