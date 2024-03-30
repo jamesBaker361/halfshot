@@ -250,7 +250,9 @@ def train_and_evaluate(ip_adapter_image:Image,
                         chosen_one_args:dict,
                         pretrained_lora_path:str,
                         label:str,
-                        subfolder:str
+                        subfolder:str,
+                        text_encoder_target_modules: list,
+                        train_embeddings:bool
                        )->dict:
     """
     init_image_list= the images we are starting with
@@ -324,7 +326,7 @@ def train_and_evaluate(ip_adapter_image:Image,
             pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=timesteps_per_image, ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_image)
         ]
     if training_method.find(CHOSEN)!=-1 or training_method.find(CHOSEN_TEX_INV)!=-1: #TODO all chosen AND cte should do this- might be redundant with stuff in tex inv
-        text_encoder_target_modules=["q_proj", "v_proj","k_proj","out_proj"]
+        #text_encoder_target_modules=args.text_encoder_target_modules #"k_proj","out_proj"]
         text_encoder_config=LoraConfig(
             r=8,
             lora_alpha=32,
@@ -334,10 +336,10 @@ def train_and_evaluate(ip_adapter_image:Image,
         text_encoder=get_peft_model(text_encoder,text_encoder_config,adapter_name="trainable")
         text_encoder.train()
         print("text encoder parameters")
+        text_encoder.get_input_embeddings().requires_grad_(train_embeddings)
         text_encoder.print_trainable_parameters()
         prepare_unet(unet, ["to_k", "to_q", "to_v", "to_out.0"],"trainable",16)
         use_chosen_one=True
-        text_prompt_list=[description_prompt]*len(valid_image_list)
         entity_name=description_prompt
         validation_prompt_list=[template.format(entity_name) for template in imagenet_template_list]
     if training_method.find(CHOSEN)!=-1:
@@ -467,6 +469,7 @@ def train_and_evaluate(ip_adapter_image:Image,
                                                                   negative,clip_processor,clip_model)
             print(f"iteration {iteration} pairwise distances {pairwise_distances} vs target {convergence_scale*init_dist}")
             print(f"len(valid_image_list) {len(valid_image_list)}")
+            text_prompt_list=[description_prompt]*len(valid_image_list)
             pipeline=loop(
                 images=valid_image_list,
                 text_prompt_list=text_prompt_list,

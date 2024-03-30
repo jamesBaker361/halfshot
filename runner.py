@@ -52,8 +52,8 @@ chosen_one_args={
 '''
 
 parser=argparse.ArgumentParser()
-parser.add_argument("--n_generated_img",type=int,default=64,help="n image to generate for chosen one")
-parser.add_argument("--convergence_scale",type=float,default=0.5,help="chosen one convergence scale")
+parser.add_argument("--n_generated_img",type=int,default=128,help="n image to generate for chosen one")
+parser.add_argument("--convergence_scale",type=float,default=0.75,help="chosen one convergence scale")
 parser.add_argument("--min_cluster_size",type=int,default=5)
 parser.add_argument("--target_cluster_size",type=int,default=10)
 parser.add_argument("--learning_rate",type=float,default=0.0001)
@@ -86,6 +86,8 @@ parser.add_argument("--pretrained_lora_path",type=str,default="jlbaker361/ddpo-r
 parser.add_argument("--cooldown",type=float,default=10.0,help="time to sleep between training methods, maybe helps to reduce memory usage")
 parser.add_argument("--image_dir",type=str,default="/scratch/jlb638/faceip")
 parser.add_argument("--subfolder",type=str,help="subfolder for reward model",default="checkpoint_10")
+parser.add_argument("--text_encoder_target_modules",nargs="*",default=[])
+parser.add_argument("--train_embedding",type=bool,default=False,help="whether to train emeddings in text encoder")
 
 def main(args):
     os.makedirs(args.image_dir,exist_ok=True)
@@ -151,7 +153,9 @@ def main(args):
                 chosen_one_args=chosen_one_args,
                 pretrained_lora_path=args.pretrained_lora_path,
                 label=label,
-                subfolder=args.subfolder
+                subfolder=args.subfolder,
+                text_encoder_target_modules=args.text_encoder_target_modules,
+                train_embeddings=args.train_embeddings
             )
         for metric in metric_list:
             src_dict[f"{metric}"].append(result_dict[metric])
