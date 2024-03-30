@@ -87,7 +87,7 @@ parser.add_argument("--cooldown",type=float,default=10.0,help="time to sleep bet
 parser.add_argument("--image_dir",type=str,default="/scratch/jlb638/faceip")
 parser.add_argument("--subfolder",type=str,help="subfolder for reward model",default="checkpoint_10")
 parser.add_argument("--text_encoder_target_modules",nargs="*",default=[])
-parser.add_argument("--train_embedding",type=bool,default=False,help="whether to train emeddings in text encoder")
+parser.add_argument("--train_embeddings",type=bool,default=False,help="whether to train emeddings in text encoder")
 
 def main(args):
     os.makedirs(args.image_dir,exist_ok=True)
