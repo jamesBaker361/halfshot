@@ -361,7 +361,6 @@ def train_and_evaluate(ip_adapter_image:Image,
         if timesteps_per_image==50:
             prior_dataset+="-50"
         print("prior_dataset",prior_dataset)
-        #if training_method.find(REWARD)==-1: #TODO all db_multi should do this eexcept for reward
         text_encoder_target_modules=["q_proj", "v_proj"]
         text_encoder_config=LoraConfig(
             r=8,
