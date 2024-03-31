@@ -345,7 +345,7 @@ def train_and_evaluate(ip_adapter_image:Image,
         entity_name=description_prompt
         validation_prompt_list=[template.format(entity_name) for template in imagenet_template_list]
     if training_method.find(CHOSEN)!=-1:
-        chosen_one_args["n_generated_img"]=int(chosen_one_args["n_generated_img"]/retain_fraction)
+        n_generated_img=int(chosen_one_args["n_generated_img"]/retain_fraction)
     if training_method.find(DB_MULTI)!=-1:
         with_prior_preservation=True
         text_prompt_list=[NEW_TOKEN]*n_image
@@ -440,7 +440,7 @@ def train_and_evaluate(ip_adapter_image:Image,
     print(f"acceleerate device {accelerator.device}")
 
     if use_chosen_one:
-        n_generated_img=chosen_one_args["n_generated_img"] # how many images to generate and then cluster
+        #n_generated_img=chosen_one_args["n_generated_img"] # how many images to generate and then cluster
         convergence_scale=chosen_one_args["convergence_scale"] #when cluster distance < convergence * init_dist then we stop
         min_cluster_size=chosen_one_args["min_cluster_size"] #ignore clusters smaller than this aka d_min_c
         max_iterations=chosen_one_args["max_iterations"] #how many loops before we give up
