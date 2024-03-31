@@ -339,6 +339,7 @@ def train_and_evaluate(ip_adapter_image:Image,
             print("text encoder parameters")
         text_encoder.get_input_embeddings().requires_grad_(train_embeddings)
         if len(text_encoder_target_modules)>0:
+            print("text encoder parameters with iput embeddings?")
             text_encoder.print_trainable_parameters()
         prepare_unet(unet, ["to_k", "to_q", "to_v", "to_out.0"],"trainable",16)
         use_chosen_one=True
@@ -350,7 +351,7 @@ def train_and_evaluate(ip_adapter_image:Image,
         with_prior_preservation=True
         text_prompt_list=[NEW_TOKEN]*n_image
         entity_name=NEW_TOKEN
-        validation_prompt_list=text_prompt_list
+        validation_prompt_list=[template.format(entity_name) for template in imagenet_template_list]
         initializer_token=get_initializer_token(description_prompt)
         prior_text_prompt_list=[initializer_token]*n_image
         prior_dataset="jlbaker361/prior-"
@@ -396,7 +397,7 @@ def train_and_evaluate(ip_adapter_image:Image,
     if training_method.find(UNET)!=-1: #TODO all uNet should do this except for reward
         unet=prepare_unet(unet,unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"],adapter_name="trainable",lora_alpha=16)
         text_prompt_list=[NEW_TOKEN]*n_image
-        validation_prompt_list=text_prompt_list
+        validation_prompt_list=[template.format(entity_name) for template in imagenet_template_list]
     if training_method.find(TEX_INV)!=-1: # or training_method.find(CHOSEN)!=-1 or training_method.find(CHOSEN_TEX_INV)!=-1: #TODO all chosen,cte,and tex_inv should do this
         tokenizer,text_encoder=prepare_textual_inversion(description_prompt,tokenizer,text_encoder)
         entity_name=NEW_TOKEN
