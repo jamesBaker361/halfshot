@@ -21,6 +21,7 @@ CHOSEN_TEX_INV="cte"
 CHOSEN_BASIC=f"{CHOSEN}_{BASIC}"
 DREAM="dream"
 PRIOR="prior"
+THUDM="thudm" #this is the image reward model stuff
 
 CHOSEN_BASIC_COLD=f"{CHOSEN_BASIC}_{COLD}"
 CHOSEN_BASIC_HOT=f"{CHOSEN_BASIC}_{HOT}"
