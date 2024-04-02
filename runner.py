@@ -180,7 +180,8 @@ def main(args):
         """
         for metric in metric_list:
             mean=np.mean(src_dict[metric])
-            model_card_content+="{metric} : {mean} \n"
+            model_card_content+=f"{metric} : {mean} \n"
+            print(f"{metric} : {mean} \n")
         with open("tmp_prior.md","w+") as file:
             file.write(model_card_content)
         upload_file(path_or_fileobj="tmp_prior.md", 
