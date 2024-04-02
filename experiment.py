@@ -32,6 +32,8 @@ from aesthetic_reward import get_aesthetic_scorer
 import gc
 from datasets import load_dataset
 import random
+import ImageReward as image_reward
+reward_cache="/scratch/jlb638/ImageReward"
 
 def prepare_unet(unet,unet_target_modules,adapter_name,lora_alpha):
     config = LoraConfig(
@@ -133,6 +135,7 @@ def evaluate_pipeline(ip_adapter_image:Image,
     ]
     if "TEST_ENV" in os.environ:
         evaluation_prompt_list=evaluation_prompt_list[:2]
+    ir_model=image_reward.load("ImageReward-v1.0",download_root=reward_cache)
     for evaluation_prompt in evaluation_prompt_list:
         prompt=evaluation_prompt.format(entity_name)
         print(f"eval prompt {prompt}")
@@ -157,6 +160,13 @@ def evaluate_pipeline(ip_adapter_image:Image,
     negative_prompt_similarity_list=[]
     target_prompt_similarity_list=[]
     aesthetic_score_list=[]
+    ir_prompt_list=[evaluation_prompt.format(text_prompt) for evaluation_prompt in evaluation_prompt_list ]
+    print(ir_prompt_list)
+    ir_score_list=[]
+    for image,prompt in zip(evaluation_image_list,ir_prompt_list):
+        print(prompt)
+        ir_score_list.append(ir_model.score(prompt,image))
+    #ir_score_list=[ir_model.score(image, prompt) for image,prompt in zip(evaluation_image_list,ir_prompt_list)]
 
     for image in evaluation_image_list:
         aesthetic_score_list.append(aesthetic_scorer(image).cpu().numpy()[0])
@@ -177,7 +187,8 @@ def evaluate_pipeline(ip_adapter_image:Image,
             "prompt_similarity":np.mean(prompt_similarity_list),
             "identity_consistency":np.mean(identity_consistency_list),
              "negative_prompt_similarity":np.mean(negative_prompt_similarity_list),
-              "target_prompt_similarity": np.mean(target_prompt_similarity_list) }
+              "target_prompt_similarity": np.mean(target_prompt_similarity_list),
+               "ir_score":np.mean(ir_score_list) }
     
     if ip_adapter_image is not None:
         ip_image_similarity_list=[]
@@ -261,6 +272,29 @@ def train_and_evaluate(ip_adapter_image:Image,
     prior_text_prompt= for dreambooth this is the prior, (should be Man, woman, boy, girl or person)
     prior_images = images of prior text prompt
     """
+    def get_prior_image_mega_list(initializer_token:str):
+        prior_dataset="jlbaker361/prior-"
+        for flavor in [COLD,HOT,REWARD]:
+            if training_method.find(flavor)!=-1:
+                prior_dataset+=flavor
+                break
+        if timesteps_per_image==50:
+            prior_dataset+="-50"
+        print("prior_dataset",prior_dataset)
+        if training_method.find(IP)==-1:
+            #prior_image_mega_list=[row[initializer_token] for row in load_dataset(prior_dataset,split="train")]
+            prior_image_mega_list=[
+                    pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=timesteps_per_image).images[0] for _ in range(20)
+            ]
+        else:
+            try:
+                prior_image_mega_list=load_dataset(prior_dataset+f"_{label}",split="train")[initializer_token]
+            except:
+                prior_image_mega_list=[
+                    pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,ip_adapter_image=ip_adapter_image, num_inference_steps=timesteps_per_image).images[0] for _ in range(20)
+                ]
+        print("len(prior_image_mega_list)",len(prior_image_mega_list))
+        return prior_image_mega_list
     print(f"training method {training_method}")
     start=time.time()
     try:
@@ -295,7 +329,7 @@ def train_and_evaluate(ip_adapter_image:Image,
         unet,text_encoder,vae,tokenizer
     )
     #clip_processor, vit_processor, vit_model=accelerator.prepare(clip_model,clip_processor, vit_processor, vit_model)
-    pipeline("nothing",num_inference_steps=2,safety_checker=None) #if we dont do this the properties wont instantiate correctly???
+    pipeline("nothing",num_inference_steps=1,safety_checker=None) #if we dont do this the properties wont instantiate correctly???
     trainable_parameters=[]
     with_prior_preservation=False
     prior_text_prompt_list=[]
@@ -308,6 +342,7 @@ def train_and_evaluate(ip_adapter_image:Image,
     prior_images=[]
     images=[]
     negative_prompt=""
+    initializer_token=get_initializer_token(description_prompt)
     if training_method.find(BASIC)==-1:
         if training_method.find(COLD)!=-1:
             negative_prompt=cold_prompt
@@ -345,23 +380,18 @@ def train_and_evaluate(ip_adapter_image:Image,
         use_chosen_one=True
         entity_name=description_prompt
         validation_prompt_list=[template.format(entity_name) for template in imagenet_template_list]
+        if training_method.find(PRIOR)!=-1:
+            with_prior_preservation=True
+            prior_image_mega_list=get_prior_image_mega_list(initializer_token)
     if training_method.find(CHOSEN)!=-1:
         n_generated_img=int(chosen_one_args["n_generated_img"]/retain_fraction)
+    if training_method.find(CHOSEN_TEX_INV)!=-1:
+        n_generated_img=chosen_one_args["n_generated_img"]
     if training_method.find(DB_MULTI)!=-1:
         with_prior_preservation=True
         text_prompt_list=[NEW_TOKEN]*n_image
         entity_name=NEW_TOKEN
         validation_prompt_list=[template.format(entity_name) for template in imagenet_template_list]
-        initializer_token=get_initializer_token(description_prompt)
-        prior_text_prompt_list=[initializer_token]*n_image
-        prior_dataset="jlbaker361/prior-"
-        for flavor in [COLD,HOT,REWARD]:
-            if training_method.find(flavor)!=-1:
-                prior_dataset+=flavor
-                break
-        if timesteps_per_image==50:
-            prior_dataset+="-50"
-        print("prior_dataset",prior_dataset)
         text_encoder_target_modules=["q_proj", "v_proj"]
         text_encoder_config=LoraConfig(
             r=8,
@@ -376,15 +406,8 @@ def train_and_evaluate(ip_adapter_image:Image,
 
         unet_target_modules= ["to_q", "to_v", "query", "value"]
         unet=prepare_unet(unet,unet_target_modules=unet_target_modules,adapter_name="trainable",lora_alpha=16)
-        if training_method.find(IP)==-1:
-            prior_image_mega_list=[row[initializer_token] for row in load_dataset(prior_dataset,split="train")]
-        if training_method.find(IP)!=-1:
-            try:
-                prior_image_mega_list=load_dataset(prior_dataset+f"_{label}",split="train")[initializer_token]
-            except:
-                prior_image_mega_list=[
-                    pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,ip_adapter_image=ip_adapter_image, num_inference_steps=timesteps_per_image).images[0] for _ in range(20)
-                ]
+        prior_text_prompt_list=[initializer_token]*n_image
+        prior_image_mega_list=get_prior_image_mega_list(initializer_token)
     if training_method.find(CHOSEN)==-1 and training_method.find(CHOSEN_TEX_INV)==-1: #TODO everything but chosen should do this
         if training_method.find(IP)==-1:
             images=[
@@ -472,6 +495,9 @@ def train_and_evaluate(ip_adapter_image:Image,
             print(f"iteration {iteration} pairwise distances {pairwise_distances} vs target {convergence_scale*init_dist}")
             print(f"len(valid_image_list) {len(valid_image_list)}")
             text_prompt_list=[description_prompt]*len(valid_image_list)
+            if with_prior_preservation:
+                prior_text_prompt_list=[initializer_token]*len(valid_image_list)
+                prior_images=random.sample(prior_image_mega_list,len(valid_image_list))
             pipeline=loop(
                 images=valid_image_list,
                 text_prompt_list=text_prompt_list,
