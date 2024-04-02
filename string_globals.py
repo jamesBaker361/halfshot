@@ -19,6 +19,8 @@ COLD="cold"
 REWARD="reward"
 CHOSEN_TEX_INV="cte"
 CHOSEN_BASIC=f"{CHOSEN}_{BASIC}"
+DREAM="dream"
+PRIOR="prior"
 
 CHOSEN_BASIC_COLD=f"{CHOSEN_BASIC}_{COLD}"
 CHOSEN_BASIC_HOT=f"{CHOSEN_BASIC}_{HOT}"
@@ -33,6 +35,13 @@ CHOSEN_COLD_IP=f"{CHOSEN}_{COLD}_{IP}"
 CHOSEN_HOT_IP=f"{CHOSEN}_{HOT}_{IP}"
 CHOSEN_REWARD=f"{CHOSEN}_{REWARD}"
 CHOSEN_REWARD_IP=f"{CHOSEN}_{REWARD}_{IP}"
+
+CHOSEN_COLD_DREAM=f"{CHOSEN}_{COLD}_{DREAM}"
+CHOSEN_HOT_DREAM=f"{CHOSEN}_{HOT}_{DREAM}"
+CHOSEN_COLD_IP_DREAM=f"{CHOSEN}_{COLD}_{IP}_{DREAM}"
+CHOSEN_HOT_IP_DREAM=f"{CHOSEN}_{HOT}_{IP}_{DREAM}"
+CHOSEN_REWARD_DREAM=f"{CHOSEN}_{REWARD}_{DREAM}"
+CHOSEN_REWARD_IP_DREAM=f"{CHOSEN}_{REWARD}_{IP}_{DREAM}"
 
 DB_MULTI_REWARD=f"{DB_MULTI}_{REWARD}"
 DB_MULTI_REWARD_IP=f"{DB_MULTI}_{REWARD}_{IP}"
@@ -88,4 +97,4 @@ training_method_suite_dict={
 }
 
 TOKEN_LIST=[ " man "," woman "," boy "," girl "]
-metric_list=["prompt_similarity","identity_consistency","negative_prompt_similarity","target_prompt_similarity","aesthetic_score"]
+metric_list=["prompt_similarity","identity_consistency","negative_prompt_similarity","target_prompt_similarity","aesthetic_score","ir_score"]
