@@ -13,6 +13,9 @@ from sklearn.cluster import KMeans
 from scipy.spatial.distance import cdist
 import numpy as np
 from aesthetic_reward import get_aesthetic_scorer
+import ImageReward as image_reward
+reward_cache="/scratch/jlb638/ImageReward"
+
 
 #remove backgrounds and use faces?
 
@@ -151,6 +154,24 @@ def get_best_cluster_aesthetic(
         *args):
     aesthetic_scorer=get_aesthetic_scorer()
     scored_ranked_image_list=[[ aesthetic_scorer(image).cpu().numpy()[0],image   ] for image in image_list]
+    scored_ranked_image_list.sort(reverse=True, key=lambda x: x[0])
+    limit=int(len(image_list) * retain_fraction)
+    print(f"len(image_list) {len(image_list)} vs limit {limit}")
+    ranked_image_list=[image for [score,image] in scored_ranked_image_list][:limit]
+    return get_best_cluster_kmeans(ranked_image_list,n_clusters, min_cluster_size,vit_processor,vit_model)
+
+def get_best_cluster_ir(
+       image_list:list,
+        n_clusters:int,
+        min_cluster_size:int,
+        vit_processor: ViTImageProcessor, vit_model:ViTModel,
+        text_prompt:str,
+        retain_fraction:float,
+        *args):
+    ir_model=image_reward.load("ImageReward-v1.0",download_root=reward_cache)
+    scored_ranked_image_list=[
+        [ir_model.score(text_prompt, image),image] for image in image_list
+    ]
     scored_ranked_image_list.sort(reverse=True, key=lambda x: x[0])
     limit=int(len(image_list) * retain_fraction)
     print(f"len(image_list) {len(image_list)} vs limit {limit}")
