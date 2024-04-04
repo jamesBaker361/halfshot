@@ -9,6 +9,13 @@ from data_helpers import make_dataloader
 import wandb
 import torch
 import torch.nn.functional as F
+import random
+import string
+
+def generate_random_string(length):
+    return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
+
+random_string=generate_random_string(3)
 
 def loop(images: list,
                text_prompt_list:list,
@@ -175,8 +182,7 @@ def loop(images: list,
 
             generator = torch.Generator(device=accelerator.device)
             generator.manual_seed(seed)
-
-            path=f"{training_method}_tmp.png"
+            path=f"{training_method}_{random_string}_tmp.png"
             for i in range(num_validation_images):
                 val_prompt=validation_prompt_list[i %len(validation_prompt_list)]
                 print(f"validation {training_method}_img_{i} {val_prompt} saved at {path}")
