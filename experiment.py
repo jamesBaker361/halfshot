@@ -135,7 +135,12 @@ def evaluate_pipeline(ip_adapter_image:Image,
     ]
     if "TEST_ENV" in os.environ:
         evaluation_prompt_list=evaluation_prompt_list[:2]
-    ir_model=image_reward.load("ImageReward-v1.0",download_root=reward_cache)
+    try:
+        ir_model=image_reward.load("ImageReward-v1.0",download_root=reward_cache)
+    except FileNotFoundError:
+        new_cache=reward_cache+"1"
+        os.makedirs(new_cache,exist_ok=True)
+        ir_model=image_reward.load("ImageReward-v1.0",download_root=new_cache)
     for evaluation_prompt in evaluation_prompt_list:
         prompt=evaluation_prompt.format(entity_name)
         print(f"eval prompt {prompt}")
