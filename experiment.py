@@ -136,7 +136,7 @@ def evaluate_pipeline(ip_adapter_image:Image,
     if "TEST_ENV" in os.environ:
         evaluation_prompt_list=evaluation_prompt_list[:2]
     try:
-        ir_model=image_reward.load("ImageReward-v1.0",download_root=reward_cache)
+        ir_model=image_reward.load("/scratch/jlb638/ImageReward/ImageReward.pt",download_root=reward_cache)
     except FileNotFoundError:
         new_cache=reward_cache+"1"
         os.makedirs(new_cache,exist_ok=True)
