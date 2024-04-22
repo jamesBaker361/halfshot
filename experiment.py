@@ -32,7 +32,7 @@ import gc
 from datasets import load_dataset
 import random
 import ImageReward as image_reward
-reward_cache="/scratch/jlb638/ImageReward"
+reward_cache="/scratch/jlb638/reward_pt"
 
 def prepare_unet(unet,unet_target_modules,adapter_name,lora_alpha):
     config = LoraConfig(
