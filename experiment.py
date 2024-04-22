@@ -1,13 +1,12 @@
 
 import os
 import torch
-if "SLURM_JOB_ID" in os.environ:
-    cache_dir="/scratch/jlb638/trans_cache"
-    os.environ["TRANSFORMERS_CACHE"]=cache_dir
-    os.environ["HF_HOME"]=cache_dir
-    os.environ["HF_HUB_CACHE"]=cache_dir
+cache_dir="/scratch/jlb638/trans_cache"
+os.environ["TRANSFORMERS_CACHE"]=cache_dir
+os.environ["HF_HOME"]=cache_dir
+os.environ["HF_HUB_CACHE"]=cache_dir
 
-    torch.hub.set_dir("/scratch/jlb638/torch_hub_cache")
+torch.hub.set_dir("/scratch/jlb638/torch_hub_cache")
 from transformers import ViTImageProcessor, ViTModel
 from huggingface_hub import hf_hub_download
 from sklearn.cluster import KMeans
@@ -136,7 +135,7 @@ def evaluate_pipeline(ip_adapter_image:Image,
     if "TEST_ENV" in os.environ:
         evaluation_prompt_list=evaluation_prompt_list[:2]
     try:
-        ir_model=image_reward.load("/scratch/jlb638/ImageReward/ImageReward.pt",download_root=reward_cache)
+        ir_model=image_reward.load("ImageReward-v1.0",download_root=reward_cache)
     except FileNotFoundError:
         new_cache=reward_cache+"1"
         os.makedirs(new_cache,exist_ok=True)
@@ -153,13 +152,14 @@ def evaluate_pipeline(ip_adapter_image:Image,
         negative_prompt=text_prompt
     if target_prompt in ["", " "]:
         target_prompt=text_prompt
-    text_list=[text_prompt, negative_prompt, target_prompt]
+    text_list=[negative_prompt, target_prompt] + evaluation_prompt_list
     clip_inputs=clip_processor(text=text_list, images=evaluation_image_list, return_tensors="pt", padding=True)
 
     outputs = clip_model(**clip_inputs)
-    text_embeds=outputs.text_embeds.detach().numpy()[0]
-    negative_text_embeds=outputs.text_embeds.detach().numpy()[1]
-    target_text_embeds=outputs.text_embeds.detach().numpy()[2]
+    
+    negative_text_embeds=outputs.text_embeds.detach().numpy()[0]
+    target_text_embeds=outputs.text_embeds.detach().numpy()[1]
+    text_embeds_list=outputs.text_embeds.detach().numpy()[2:]
     image_embed_list=outputs.image_embeds.detach().numpy()
     prompt_similarity_list=[]
     negative_prompt_similarity_list=[]
@@ -179,6 +179,7 @@ def evaluate_pipeline(ip_adapter_image:Image,
     identity_consistency_list=[]
     for i in range(len(image_embed_list)):
         vector_i=image_embed_list[i]
+        text_embeds=text_embeds_list[i]
         prompt_similarity_list.append(np.dot(vector_i, text_embeds)/(norm(vector_i)* norm(text_embeds)))
         negative_prompt_similarity_list.append(np.dot(vector_i, negative_text_embeds)/(norm(vector_i)* norm(negative_text_embeds)))
         target_prompt_similarity_list.append(np.dot(vector_i, target_text_embeds)/(norm(vector_i)* norm(target_text_embeds)))
@@ -395,7 +396,7 @@ def train_and_evaluate(ip_adapter_image:Image,
     if training_method.find(DB_MULTI)!=-1:
         with_prior_preservation=True
         text_prompt_list=[NEW_TOKEN]*n_image
-        entity_name=NEW_TOKEN
+        entity_name=NEW_TOKEN +" "+ initializer_token
         validation_prompt_list=[template.format(entity_name) for template in imagenet_template_list]
         text_encoder_target_modules=["q_proj", "v_proj"]
         text_encoder_config=LoraConfig(
@@ -422,10 +423,12 @@ def train_and_evaluate(ip_adapter_image:Image,
             images=[
                 pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=timesteps_per_image,ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_image)
             ]
-    if training_method.find(UNET)!=-1: #TODO all uNet should do this except for reward
+    if training_method.find(UNET)!=-1 or training_method.find(ADAPTER)!=-1: #TODO all uNet should do this except for reward
         unet=prepare_unet(unet,unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"],adapter_name="trainable",lora_alpha=16)
         text_prompt_list=[NEW_TOKEN]*n_image
         validation_prompt_list=[template.format(entity_name) for template in imagenet_template_list]
+        if training_method.find(ADAPTER)!=-1:
+            epochs=0
     if training_method.find(TEX_INV)!=-1: # or training_method.find(CHOSEN)!=-1 or training_method.find(CHOSEN_TEX_INV)!=-1: #TODO all chosen,cte,and tex_inv should do this
         tokenizer,text_encoder=prepare_textual_inversion(description_prompt,tokenizer,text_encoder)
         entity_name=NEW_TOKEN
@@ -483,21 +486,19 @@ def train_and_evaluate(ip_adapter_image:Image,
                 pipeline(description_prompt,negative_prompt=negative_prompt,num_inference_steps=timesteps_per_image,safety_checker=None).images[0] for _ in range(n_generated_img)]
         print("generated initial sets of images")
         last_hidden_states=get_hidden_states(image_list,vit_processor,vit_model)
-        print("last hidden staes")
         init_dist=get_init_dist(last_hidden_states)
-        print("init_dist")
         pairwise_distances=init_dist
         iteration=0
         while pairwise_distances>=convergence_scale*init_dist and iteration<max_iterations:
             print(f"while loop len(image_list)={len(image_list)} n_genertaed_img={n_generated_img}")
-            valid_image_list, pairwise_distances=cluster_function(image_list,
+            valid_image_list, centroid_distances=cluster_function(image_list,
                                                                   n_clusters, 
                                                                   min_cluster_size,
                                                                   vit_processor,vit_model,
                                                                   cluster_text_prompt,
                                                                   retain_fraction,
                                                                   negative,clip_processor,clip_model)
-            print(f"iteration {iteration} pairwise distances {pairwise_distances} vs target {convergence_scale*init_dist}")
+            print(f"iteration {iteration} centroid distances {centroid_distances}")
             print(f"len(valid_image_list) {len(valid_image_list)}")
             text_prompt_list=[description_prompt]*len(valid_image_list)
             if with_prior_preservation:
@@ -531,7 +532,12 @@ def train_and_evaluate(ip_adapter_image:Image,
                 image_list=[pipeline(description_prompt,num_inference_steps=timesteps_per_image,num_images_per_prompt=1,safety_checker=None,ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_generated_img)]
             else:
                 image_list=[pipeline(description_prompt,num_inference_steps=timesteps_per_image,safety_checker=None,num_images_per_prompt=1).images[0] for _ in range(n_generated_img) ]
+            last_hidden_states=get_hidden_states(image_list,vit_processor,vit_model)
+            init_dist=get_init_dist(last_hidden_states)
+            pairwise_distances=init_dist
             iteration+=1
+            print(f"iteration {iteration} pairwise distances {pairwise_distances} vs {convergence_scale*init_dist}")
+
         del image_list
         del valid_image_list
     elif with_prior_preservation:
