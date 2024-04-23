@@ -32,7 +32,10 @@ import gc
 from datasets import load_dataset
 import random
 import ImageReward as image_reward
-reward_cache="/scratch/jlb638/reward_pt"
+import string
+def generate_random_string(length):
+    return ''.join(random.choice(string.ascii_letters) for _ in range(length))
+reward_cache="/scratch/jlb638/reward_symbolic/"+generate_random_string(10)
 
 def prepare_unet(unet,unet_target_modules,adapter_name,lora_alpha):
     config = LoraConfig(
@@ -135,7 +138,7 @@ def evaluate_pipeline(ip_adapter_image:Image,
     if "TEST_ENV" in os.environ:
         evaluation_prompt_list=evaluation_prompt_list[:2]
     try:
-        ir_model=image_reward.load("ImageReward-v1.0",download_root=reward_cache)
+        ir_model=image_reward.load("/scratch/jlb638/reward-blob",med_config="/scratch/jlb638/ImageReward/med_config.json")
     except FileNotFoundError:
         new_cache=reward_cache+"1"
         os.makedirs(new_cache,exist_ok=True)
