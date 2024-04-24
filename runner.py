@@ -8,6 +8,7 @@ os.environ["HF_HUB_CACHE"]=cache_dir
 torch.hub.set_dir("/scratch/jlb638/torch_hub_cache")
 os.environ["WANDB_DIR"]="/scratch/jlb638/wandb"
 os.environ["WANDB_CACHE_DIR"]="/scratch/jlb638/wandb_cache"
+os.environ["WANDB__SERVICE_WAIT"] = "300"
 import argparse
 from accelerate import Accelerator
 from datasets import load_dataset
@@ -70,7 +71,7 @@ parser.add_argument("--size",type=int,default=512)
 parser.add_argument("--train_batch_size",type=int,default=8)
 parser.add_argument("--num_validation_images",type=int,default=1)
 parser.add_argument("--noise_offset",type=float,default=0.0)
-parser.add_argument("--dataset",type=str,default="jlbaker361/league_faces_captioned_lite")
+parser.add_argument("--dataset",type=str,default="jlbaker361/league-hard-prompt")
 parser.add_argument("--retain_fraction",type=float,default=0.5)
 parser.add_argument("--negative_prompt",type=str,default=NEGATIVE_PROMPT)
 parser.add_argument("--target_prompt",type=str,default=LOL_SUFFIX)
@@ -121,17 +122,18 @@ def main(args):
             continue
         if i>args.limit:
             break
-        splash=row["splash"]
-        tile=row["tile"]
+        '''splash=row["splash"]
+        tile=row["tile"]'''
         label=str(row["label"])
         src_dict["label"].append(label)
-        text_prompt=row["caption"]+" "+args.suffix
-        if args.img_type=="splash":
+        #text_prompt=row["caption"]+" "+args.suffix
+        text_prompt=row["optimal_prompt"].lower().replace(LOL_SUFFIX,"")+" , "+args.suffix
+        '''if args.img_type=="splash":
             ip_adapter_image=splash
         elif args.img_type=="tile":
-            ip_adapter_image=tile
+            ip_adapter_image=tile'''
         result_dict=train_and_evaluate(
-                ip_adapter_image=ip_adapter_image,
+                ip_adapter_image=None,
                 description_prompt=text_prompt,
                 accelerator=accelerator,
                 learning_rate=args.learning_rate,
@@ -182,13 +184,13 @@ def main(args):
         for metric in metric_list:
             mean=np.mean(src_dict[metric])
             model_card_content+=f"{metric} : {mean} \n"
-            print(f"{metric} : {mean} \n")
+            print(f"\t{metric} : {mean}")
         with open("tmp_prior.md","w+") as file:
             file.write(model_card_content)
-        upload_file(path_or_fileobj="tmp_prior.md", 
+        '''upload_file(path_or_fileobj="tmp_prior.md", 
                     path_in_repo="README.md",
                     repo_id=args.dest_dataset,
-                    repo_type="dataset")
+                    repo_type="dataset")'''
     accelerator.get_tracker("wandb").log({
         "result_table":wandb.Table(columns=columns,data=data)
         })
