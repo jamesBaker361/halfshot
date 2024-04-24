@@ -36,6 +36,7 @@ import string
 def generate_random_string(length):
     return ''.join(random.choice(string.ascii_letters) for _ in range(length))
 reward_cache="/scratch/jlb638/reward_symbolic/"+generate_random_string(10)
+from align_prop_src import align_generate
 
 def prepare_unet(unet,unet_target_modules,adapter_name,lora_alpha):
     config = LoraConfig(
@@ -272,7 +273,9 @@ def train_and_evaluate(ip_adapter_image:Image,
                         label:str,
                         subfolder:str,
                         text_encoder_target_modules: list,
-                        train_embeddings:bool
+                        train_embeddings:bool,
+                        align_prop:bool,
+                        align_from_prompt:bool
                        )->dict:
     """
     init_image_list= the images we are starting with
@@ -306,20 +309,10 @@ def train_and_evaluate(ip_adapter_image:Image,
         return prior_image_mega_list
     print(f"training method {training_method}")
     start=time.time()
-    try:
-        gc.collect()
-        torch.cuda.empty_cache()
-        accelerator.free_memory()
-        gc.collect()
-        print("cleared cache!?!?")
-    except:
-        print("did not clear cache")
-    try:
-        print('experiment torch.cuda.get_device_name()',torch.cuda.get_device_name())
-        print('experiment torch.cuda.get_device_capability()',torch.cuda.get_device_capability())
-        print('experiment torch.cuda.get_device_properties()',torch.cuda.get_device_properties())
-    except:
-        print("couldnt print cuda details")
+    for flavor in [COLD,HOT,REWARD]:
+        if training_method.find(flavor)!=-1:
+            prior_dataset+=flavor
+            break
     pipeline=StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5")
     clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
     clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
@@ -418,13 +411,41 @@ def train_and_evaluate(ip_adapter_image:Image,
         prior_text_prompt_list=[initializer_token]*n_image
         prior_image_mega_list=get_prior_image_mega_list(initializer_token)
     if training_method.find(CHOSEN)==-1 and training_method.find(CHOSEN_TEX_INV)==-1: #TODO everything but chosen should do this
-        if training_method.find(IP)==-1:
-            images=[
-                pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
-            ]
+        if align_prop:
+            if align_from_prompt:
+                images=[
+                    align_generate(accelerator,
+                    pipeline,
+                    description_prompt,
+                    PROMPT,
+                    True,
+                    5,
+                    timesteps_per_image-5,
+                    0,
+                    7.5,
+                    optimizer,
+                    hot_prompt,
+                    NEGATIVE_PROMPT) for _ in range(n_image)
+                ]
+            else:
+                images=[
+                    align_generate(
+                        accelerator,
+                    pipeline,
+                    description_prompt,
+                    flavor,
+                    True,
+                    5,
+                    timesteps_per_image-5,
+                    0,
+                    7.5,
+                    optimizer,
+                    hot_prompt,
+                    negative_prompt) for _ in range(n_generated_img)
+                ]
         else:
             images=[
-                pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=timesteps_per_image,ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_image)
+                pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=timesteps_per_image).images[0] for _ in range(n_image)
             ]
     if training_method.find(UNET)!=-1 or training_method.find(ADAPTER)!=-1: #TODO all uNet should do this except for reward
         unet=prepare_unet(unet,unet_target_modules=["to_k", "to_q", "to_v", "to_out.0"],adapter_name="trainable",lora_alpha=16)
@@ -481,12 +502,43 @@ def train_and_evaluate(ip_adapter_image:Image,
         #starting_cluster=chosen_one_args["starting_cluster"] #initial images
         target_cluster_size=chosen_one_args["target_cluster_size"] #aka dsize_c
         n_clusters=n_generated_img // target_cluster_size
-        if use_ip_adapter:
-            image_list=[
-                pipeline(description_prompt,negative_prompt=negative_prompt,num_inference_steps=timesteps_per_image,safety_checker=None,ip_adapter_image=ip_adapter_image).images[0] for _ in range(n_generated_img)]
+        if align_prop:
+            if align_from_prompt:
+                images=[
+                    align_generate(
+                        accelerator,
+                    pipeline,
+                    description_prompt,
+                    PROMPT,
+                    True,
+                    5,
+                    timesteps_per_image-5,
+                    0,
+                    7.5,
+                    optimizer,
+                    hot_prompt,
+                    negative_prompt) for _ in range(n_generated_img)
+                ]
+            else:
+                images=[
+                    align_generate(
+                        accelerator,
+                    pipeline,
+                    description_prompt,
+                    flavor,
+                    True,
+                    5,
+                    timesteps_per_image-5,
+                    0,
+                    7.5,
+                    optimizer,
+                    hot_prompt,
+                    negative_prompt) for _ in range(n_generated_img)
+                ]
         else:
-            image_list=[
-                pipeline(description_prompt,negative_prompt=negative_prompt,num_inference_steps=timesteps_per_image,safety_checker=None).images[0] for _ in range(n_generated_img)]
+            images=[
+                pipeline(description_prompt,negative_prompt=negative_prompt,safety_checker=None,num_inference_steps=timesteps_per_image).images[0] for _ in range(n_generated_img)
+            ]
         print("generated initial sets of images")
         last_hidden_states=get_hidden_states(image_list,vit_processor,vit_model)
         init_dist=get_init_dist(last_hidden_states)
