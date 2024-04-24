@@ -74,7 +74,7 @@ parser.add_argument("--noise_offset",type=float,default=0.0)
 parser.add_argument("--dataset",type=str,default="jlbaker361/league-hard-prompt")
 parser.add_argument("--retain_fraction",type=float,default=0.5)
 parser.add_argument("--negative_prompt",type=str,default=NEGATIVE_PROMPT)
-parser.add_argument("--target_prompt",type=str,default=LOL_SUFFIX)
+parser.add_argument("--target_prompt",type=str,default=HOT_PROMPT)
 parser.add_argument("--limit",type=int,default=3, help="n characters to try to do")
 parser.add_argument("--training_method_suite",type=str, default=CHOSEN_SUITE)
 parser.add_argument("--training_method",type=str, default=UNET)
@@ -91,6 +91,8 @@ parser.add_argument("--subfolder",type=str,help="subfolder for reward model",def
 parser.add_argument("--text_encoder_target_modules",nargs="*",default=[])
 parser.add_argument("--train_embeddings",type=bool,default=False,help="whether to train emeddings in text encoder")
 parser.add_argument("--start",type=int,default=0,help="the image/prompt to start training")
+parser.add_argument("--align_prop",action="store_true")
+parser.add_argument("--align_from_prompt",action="store_true")
 
 def main(args):
     os.makedirs(args.image_dir,exist_ok=True)
@@ -131,7 +133,8 @@ def main(args):
         label=str(row["label"])
         src_dict["label"].append(label)
         #text_prompt=row["caption"]+" "+args.suffix
-        text_prompt=row["optimal_prompt"].lower().replace(LOL_SUFFIX,"")+" , "+args.suffix
+        HOT_PROMPT=HOT_PROMPT.replace("_", " ")
+        text_prompt=row["optimal_prompt"].lower().replace(HOT_PROMPT,"")+" , "+args.suffix
         '''if args.img_type=="splash":
             ip_adapter_image=splash
         elif args.img_type=="tile":
@@ -165,7 +168,9 @@ def main(args):
                 label=label,
                 subfolder=args.subfolder,
                 text_encoder_target_modules=args.text_encoder_target_modules,
-                train_embeddings=args.train_embeddings
+                train_embeddings=args.train_embeddings,
+                align_prop=args.align_prop,
+                align_from_prompt=args.align_from_prompt,
             )
         for metric in metric_list:
             src_dict[f"{metric}"].append(result_dict[metric])
@@ -180,11 +185,11 @@ def main(args):
         del result_dict
         time.sleep(args.cooldown)
         print(src_dict)
-        try:
+        '''try:
             Dataset.from_dict(src_dict).push_to_hub(args.dest_dataset)
         except:
             time.sleep(120)
-            Dataset.from_dict(src_dict).push_to_hub(args.dest_dataset)
+            Dataset.from_dict(src_dict).push_to_hub(args.dest_dataset)'''
         model_card_content=f"""
         method: {args.training_method} \n
         num_inference_steps: {args.timesteps_per_image}\n
