@@ -111,7 +111,11 @@ def main(args):
     }
     columns=["method","label"]+metric_list
     data=[]
-    dataset=load_dataset(args.dataset,split="train")
+    try:
+        dataset=load_dataset(args.dataset,split="train")
+    except:
+        time.sleep(120)
+        dataset=load_dataset(args.dataset,split="train")
     src_dict={
         "label":[]
     }
@@ -176,7 +180,11 @@ def main(args):
         del result_dict
         time.sleep(args.cooldown)
         print(src_dict)
-        Dataset.from_dict(src_dict).push_to_hub(args.dest_dataset)
+        try:
+            Dataset.from_dict(src_dict).push_to_hub(args.dest_dataset)
+        except:
+            time.sleep(120)
+            Dataset.from_dict(src_dict).push_to_hub(args.dest_dataset)
         model_card_content=f"""
         method: {args.training_method} \n
         num_inference_steps: {args.timesteps_per_image}\n
